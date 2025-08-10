@@ -3,9 +3,9 @@ This tool helps you add custom songs to your Let's Sing! 2022 or 2025 game. It c
 The goal of this tool is full automation, it processes the song covers, audio, video, lyrics files, and generates the required structure with minimal fiddling.
 
 ## Credits
-Major props go to [dh4rry](https://github.com/dh4rry), the original creator of the UltraStar2singit.py script. He made the script for Let's Sing! 2019, but I see he's [still active and implementing a GUI for the tool](https://github.com/dh4rry/Ultrastar2singIt-Converter).
-<br>Many props go to MRJPGames over at gbatemp, he refined the original script, made it work for Let's Sing! 2022 and wrote a pretty good tutorial for getting the needed files from and onto your console in [this thread](https://gbatemp.net/threads/add-custom-songs-to-lets-sing-2022-from-ultrastar.607817/).
-<br>Overwhelming props go to [kosei](https://gbatemp.net/members/kosei.626603/), also at gbatemp, for writing a script to automate this whole process [in the same thread](https://gbatemp.net/threads/add-custom-songs-to-lets-sing-2022-from-ultrastar.607817/post-10037766).
+ - Major props go to [dh4rry](https://github.com/dh4rry), the original creator of the ultrastar2singit.py script. He made the script for Let's Sing! 2019, but I see he's [still active and implementing a GUI for the tool](https://github.com/dh4rry/Ultrastar2singIt-Converter).
+ - Many props go to MRJPGames over at gbatemp, he refined the original script, made it work for Let's Sing! 2022 and wrote a pretty good tutorial for getting the needed files from and onto your console in [this thread](https://gbatemp.net/threads/add-custom-songs-to-lets-sing-2022-from-ultrastar.607817/).
+ - Overwhelming props go to [kosei](https://gbatemp.net/members/kosei.626603/), also at gbatemp, for writing a script to automate this whole process [in the same thread](https://gbatemp.net/threads/add-custom-songs-to-lets-sing-2022-from-ultrastar.607817/post-10037766).
 
 UltraStar karaoke files lack proper standardization, so what began as a fun idea quickly evolved into a fully fledged project.
 <br>Inspired by kosei’s post and automation script, and compelled by poor standardization, I extensively modified both scripts to streamline the conversion process (and took some [Creative Liberties](#creative-liberties)).
