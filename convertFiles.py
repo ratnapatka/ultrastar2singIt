@@ -14,20 +14,19 @@ from tqdm import tqdm
 
 import ultrastar2singit
 
-OLD = '2022'
-NEW = '2025'
-
-XMLtemplate = 'Zombie_meta.xml'
-SongDLCfile = 'SongsDLC.tsv'
-nameTxtFile = 'name.txt'
-
 # Lets Sing 2022 IDs
 COREID = '0100CC30149B8000'
 DLCID_2022 = '0100CC30149B9011' # Best of 90s Vol 3 Song Pack
 
 # Let's Sing 2025 DLC ID, core ID doesn't matter
 DLCID_2025 = '01001C101ED11002' # French Hits
-DLC_NAME = 'songs_fr'
+DLC_NAME_DEFAULT = 'songs_fr'
+
+OLD = '2022'
+NEW = '2025'
+
+SongDLCfile = 'SongsDLC.tsv'
+nameTxtFile = 'name.txt'
 
 musicGenreList = ['Pop', 'Rap', 'Rock', 'Ballad', 'Electro']
 
@@ -47,6 +46,12 @@ logger = logging.getLogger(__name__)
 def convert_files(dirsToConvert, output_type=OLD):
 
     DLCID = DLCID_2022 if output_type == OLD else DLCID_2025
+
+    json_files = [f for f in os.listdir('.') if f.endswith('.json') and os.path.isfile(f)]
+    if json_files:
+        dlcName = os.path.splitext(json_files[0])[0]
+    else:
+        dlcName = DLC_NAME_DEFAULT
 
     for dirLongName in tqdm(dirsToConvert, desc="Converting folders"):
 
@@ -82,7 +87,7 @@ def convert_files(dirsToConvert, output_type=OLD):
             oggFileName = nameID + '.ogg'
             oggPreviewFileName = nameID + '_preview.ogg'
             xmlFileName = nameID + '_meta.xml'
-            jsonFileName = DLC_NAME + '.json'
+            jsonFileName = dlcName + '.json'
 
             # Getting info from the text file
             if not filesTxt:
@@ -151,7 +156,7 @@ def convert_files(dirsToConvert, output_type=OLD):
             ultrastar2singit.main(filesTxt[-1], song_duration, pitchCorrect=0, s=nameID, dir=listInDir)
 
             # Handle name.txt - create it at destination if it doesn't exist
-            add_data_to_name_txt(DLCID, nameID, output_type)
+            add_data_to_name_txt(DLCID, nameID, output_type, dlcName)
 
             # Handle SongsDLC.tsv for OLD dlc, or json file for NEW dlc
             handle_xml_or_json(DLCID, jsonFileName, listInDir, txtData, nameID, output_type, xmlFileName)
@@ -267,7 +272,7 @@ def add_song_to_json(dlcId, jsonFileName, song_data):
                 data = json.load(f)
         else:
             # Create a new json file
-            data = {"name": DLC_NAME.split('_')[1], "songs": []}
+            data = {"name": jsonFileName.split('_')[1].split('.')[0], "songs": []}
 
     data['songs'].append(song_data)
     with open(dest_json_file, 'w', encoding='utf-8') as f:
@@ -338,7 +343,7 @@ def match_genre(txtData):
             return g
     return 'Pop'  # default
 
-def add_data_to_name_txt(dlcId, nameID, output_type):
+def add_data_to_name_txt(dlcId, nameID, output_type, dlcName):
     dlc_romfs_dir = os.path.join(localDir, patchFolderName, dlcId, 'romfs')
     os.makedirs(dlc_romfs_dir, exist_ok=True)
     dest_name_txt = os.path.join(dlc_romfs_dir, nameTxtFile)
@@ -352,7 +357,7 @@ def add_data_to_name_txt(dlcId, nameID, output_type):
                 open(dest_name_txt, 'w').close()
             elif output_type == NEW:
                 with open(dest_name_txt, 'w') as outfile:
-                    outfile.write(DLC_NAME + '\n')
+                    outfile.write(dlcName + '\n')
     # Add new entry to name.txt in destination for OLD dlc
     if output_type == OLD:
         with open(dest_name_txt, 'a') as outfile:
