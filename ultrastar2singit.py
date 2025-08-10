@@ -162,6 +162,3 @@ def main(input_file, songDuration, pitchCorrect=0, s='', dir=''):
     sing_it = map_data(us_data, songDuration, pitchCorrect)
     write_vxla_file(sing_it, output_file + '.vxla', directory=dir)
 
-# if __name__ == "__main__":
-#     main(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5])
-#     # main("The Scorpions - Wind of Change.txt", 300.123, 0, "mojtest.vxla", os.getcwd())
