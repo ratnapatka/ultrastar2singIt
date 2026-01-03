@@ -27,7 +27,7 @@ After successfully adding over 400 songs to Let’s Sing! 2022, I expanded suppo
 3. Adjust the convertFiles.py script if needed, i.e. change the **COREID** and/or **DLCID** presets at the top to match your installed Let's Sing! ROM and DLC. These are set by default:
    - for Let's Sing! **2022**, COREID = 0100CC30149B8000, DLCID = 0100CC30149B9011
    - for Let's Sing! **2025**, DLC_NAME = songs_fr, DLCID = 01001C101ED11002
-4. Run the converter from the command line (2022 is chosen by default):<br>convertFiles.py [2022|2025]
+4. Run the converter from the command line (2025 is chosen by default):<br>convertFiles.py [2022|2025]
 5. Check the **error.log** file for any errors during conversion. The script will not stop in case of errors and will skip to the next song. You can just rerun the script after any corrections in the files or script, the _Patch folder will get deleted and any previously successfully converted files will just be copied over from the songs' folders (they won't be encoded again).
 6. Copy the contents of the generated _Patch folder (COREID and/or DLCID folders) to your SD card **sd:/atmosphere/contents**.
 7. Run the game and sing!

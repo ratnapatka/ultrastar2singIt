@@ -25,6 +25,8 @@ DLC_NAME_DEFAULT = 'songs_fr'
 OLD = '2022'
 NEW = '2025'
 
+target_size_mb = 50.0
+
 SongDLCfile = 'SongsDLC.tsv'
 nameTxtFile = 'name.txt'
 
@@ -43,7 +45,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-def convert_files(dirsToConvert, output_type=OLD):
+def convert_files(dirsToConvert, output_type=NEW):
 
     DLCID = DLCID_2022 if output_type == OLD else DLCID_2025
 
@@ -105,26 +107,37 @@ def convert_files(dirsToConvert, output_type=OLD):
 
             if filesAvi:
                 file = filesAvi[0]
-                target_size_mb = 50
                 duration = get_duration(os.fspath(file))
-                targetBitrateKbps = int((target_size_mb * 8192) / duration)  # Convert MB to kilobits
+                original_size_bytes = file.stat().st_size
+                original_size_mb = original_size_bytes / (1024 * 1024)
+                targetBitrateKbps = int((original_size_mb * 8192) / duration)  # Convert MB to kilobits
 
                 if outputVideoFileName not in filesAll:
                     if output_type == OLD:
+                        if original_size_mb > target_size_mb:
+                            targetBitrateKbps = int((target_size_mb * 8192) / duration)  # Keep bitrate below 50 mb
                         create_video(file, listInDir, outputVideoFileName, targetBitrateKbps)
                     elif output_type == NEW:
                         if is_video_still_image(file):
                             quality = 0.1
-                            peakBitrateKbps = None
                         else:
                             quality = None
-                            peakBitrateKbps = targetBitrateKbps
                         tqdm.write(str(file))
-                        if file.suffix.lower() in ('.flv', '.mkv', '.webm'):
-                            # more like bunk compression...
-                            create_video(file, listInDir, nameID + '.mp4', targetBitrateKbps)
-                            file = os.fspath(listInDir / nameID) + '.mp4'
-                        create_video_bink(file, listInDir, outputVideoFileName, peakBitrateKbps, quality)
+                        temp_mp4_name = nameID + '.mp4'
+                        temp_mp4_file = listInDir / temp_mp4_name
+                        if file.suffix.lower() in ('.avi', '.divx', '.mp4', '.flv', '.mkv', '.webm'):
+                            if not temp_mp4_file.exists():
+                                create_video(file, listInDir, temp_mp4_name, targetBitrateKbps)
+
+                            temp_size_bytes = temp_mp4_file.stat().st_size
+                            temp_size_mb = temp_size_bytes / (1024 * 1024)
+                            if temp_size_mb <= target_size_mb:
+                                compression_percentage = 100
+                            else:
+                                percentage = (target_size_mb / temp_size_mb) * 100
+                                compression_percentage = max(1, min(200, int(round(percentage))))
+
+                            create_video_bink(os.fspath(temp_mp4_file), listInDir, outputVideoFileName, compression_percentage, quality)
 
             if oggFileName not in filesAll:
                 create_audio(filesAvi, filesMp3, listInDir, oggFileName, videoGap)
@@ -153,7 +166,7 @@ def convert_files(dirsToConvert, output_type=OLD):
                                       None, quality=0.1)  # Convert to bink with low quality
 
             # generating vxla file
-            ultrastar2singit.main(filesTxt[-1], song_duration, pitchCorrect=0, s=nameID, dir=listInDir)
+            ultrastar2singit.main(filesTxt[-1], song_duration, pitchCorrect=0, s=nameID, dir=listInDir, output_type=output_type)
 
             # Handle name.txt - create it at destination if it doesn't exist
             add_data_to_name_txt(DLCID, nameID, output_type, dlcName)
@@ -173,8 +186,8 @@ def convert_files(dirsToConvert, output_type=OLD):
             shutil.copy2(os.fspath(listInDir / oggFileName), os.path.join(base_dlc_dir, 'romfs/Songs/audio'))
             shutil.copy2(os.fspath(listInDir / oggPreviewFileName), os.path.join(base_dlc_dir, 'romfs/Songs/audio_preview'))
             shutil.copy2(os.fspath(listInDir / pngFileName), os.path.join(base_dlc_dir, 'romfs/Songs/covers'))
-            shutil.copy2(os.fspath(listInDir / outputVideoFileName), os.path.join(base_dlc_dir, 'romfs/Songs/videos'))
             shutil.copy2(os.fspath(listInDir / vxlaFileName), os.path.join(base_dlc_dir, 'romfs/Songs/vxla'))
+            shutil.copy2(os.fspath(listInDir / outputVideoFileName), os.path.join(base_dlc_dir, 'romfs/Songs/videos'))
 
             if output_type == OLD:
                 os.makedirs(os.path.join(base_dlc_dir, 'romfs/Songs/backgrounds/InGameLoading'), exist_ok=True)
@@ -395,12 +408,17 @@ def create_still_video_from_cover_image(filesJpg, filesTxt, listInDir, outputMp4
         file = filesJpg[0]
     target_size_mb = 10
     target_bitrate_kbps = int((target_size_mb * 8192) / song_duration)  # Convert MB to kilobits
+    complex_filter = (
+        "split[bg][fg];"
+        "[bg]scale=1280:720:force_original_aspect_ratio=increase,crop=1280:720,gblur=sigma=10[bg_blurred];"
+        "[fg]scale='if(gt(iw/ih,1280/720),min(iw,1280),-1)':'if(gt(iw/ih,1280/720),-1,min(ih,720))':force_original_aspect_ratio=decrease[fg_scaled];"
+        "[bg_blurred][fg_scaled]overlay=(W-w)/2:(H-h)/2,fps=25"
+    )
     ffmpegCmd = [os.fspath(p / 'ffmpeg/bin/ffmpeg.exe'), '-y', '-loop', '1',
                  '-i', os.fspath(file), '-c:v', 'libx264', '-t', str(song_duration),
                  '-preset', 'medium', '-tune', 'stillimage',
                  '-b:v', f'{target_bitrate_kbps}k',
-                 '-vf',
-                 'scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2,fps=25',
+                 '-vf', complex_filter,
                  '-pix_fmt', 'yuv420p',
                  '-an', os.fspath(listInDir / outputMp4FileName)]
     subprocess.run(ffmpegCmd)
@@ -499,15 +517,16 @@ def create_video(file, listInDir, outputVideoFileName, targetBitrateKbps):
     for log_file in Path('.').glob('ffmpeg2pass*'):
         os.remove(log_file)
 
-def create_video_bink(file, listInDir, outputVideoFileName, targetBitrateKbps, quality):
+def create_video_bink(file, listInDir, outputVideoFileName, compression_percentage, quality):
     binkconv_path = os.path.join(os.environ['ProgramFiles(x86)'], 'RADVideo', 'radvideo64.exe')
     fileFormat = '/V' + str(200) # 200 = bink2
     removeSound = '/L-1'
+    forceFramerate = '/F25.0'
     binkArgs = [binkconv_path, 'binkc', file, os.fspath(listInDir / outputVideoFileName), fileFormat,
-                    '/(1280', '/)720', removeSound]
-    if targetBitrateKbps:
-        peakBitrateSwitch = '/M' + str(targetBitrateKbps * 1024)  # in bits per second
-        binkArgs.append(peakBitrateSwitch)
+                    '/(1280', '/)720', removeSound, forceFramerate]
+    if compression_percentage:
+        dataRateSwitch = '/D' + str(compression_percentage)
+        binkArgs.append(dataRateSwitch)
     if quality:
         qualitySwitch = '/Q' + str(quality) # 1.0 is the highest quality
         binkArgs.append(qualitySwitch)
@@ -535,7 +554,7 @@ def delete_patch_folder():
     except Exception as e:
         tqdm.write(f"Error deleting Patch folder: {e}")
 
-def main(output_type=OLD):
+def main(output_type=NEW):
     delete_patch_folder()
     dirsToConvert = find_folders_to_convert()
 
@@ -546,8 +565,8 @@ if __name__ == '__main__':
     import argparse
 
     parser = argparse.ArgumentParser(description='Convert Ultrastar files to Sing It format.')
-    parser.add_argument('output_type', nargs='?', type=str, default=OLD, choices=[OLD, NEW],
-                        help='Output file type: old or new (default: old)')
+    parser.add_argument('output_type', nargs='?', type=str, default=NEW, choices=[OLD, NEW],
+                        help='Output file type: old or new (default: new)')
     args = parser.parse_args()
 
     main(args.output_type)
