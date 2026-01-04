@@ -51,7 +51,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-def convert_files(dirs_to_convert, output_type=NEW, pitch_correction_method=SLOW):
+def convert_files(dirs_to_convert, output_type=NEW, pitch_correction_method=FAST):
 
     DLCID = DLCID_2022 if output_type == OLD else DLCID_2025
 
@@ -172,8 +172,8 @@ def convert_files(dirs_to_convert, output_type=NEW, pitch_correction_method=SLOW
 
             # generating vxla file
             if pitch_correction_method == SLOW:
-                pitch_corr = PitchAnalyzer.get_pitch_correction_suggestion(txt_data, os.fspath(list_in_dir / ogg_file_name),
-                                                                              min_pitch=PITCH_MIN, max_pitch=PITCH_MAX)
+                pitch_corr = PitchAnalyzer.get_pitch_correction_suggestion_slow(txt_data, os.fspath(list_in_dir / ogg_file_name),
+                                                                                min_pitch=PITCH_MIN, max_pitch=PITCH_MAX)
             else:
                 pitch_corr = PitchAnalyzer.get_pitch_correction_suggestion_fast(txt_data,min_pitch=PITCH_MIN, max_pitch=PITCH_MAX)
             UltrastarToSingit.main(files_txt[-1], song_duration, pitch_corr, s=name_id, dir=list_in_dir, output_type=output_type)
@@ -563,7 +563,7 @@ def delete_patch_folder():
     except Exception as e:
         tqdm.write(f"Error deleting Patch folder: {e}")
 
-def main(output_type=NEW, pitch_correction_method=SLOW):
+def main(output_type=NEW, pitch_correction_method=FAST):
     delete_patch_folder()
     dirs_to_convert = find_folders_to_convert()
 
@@ -578,10 +578,10 @@ if __name__ == '__main__':
     parser.add_argument('output_type', nargs='?', type=str, default=NEW, choices=[OLD, NEW],
                         help='Output file type: old or new (default: new)')
     parser.add_argument('pitch_correction_method', nargs='?',
-                        type=str.lower, default=SLOW, choices=[FAST, SLOW],
+                        type=str.lower, default=FAST, choices=[FAST, SLOW],
                         help='Which pitch correction method to use: '
                              '[fast] - using simple calculations '
-                             '[slow] - using audio analyzer (default: slow)')
+                             '[slow] - using audio analyzer (default: fast)')
 
     args = parser.parse_args()
 

@@ -20,10 +20,11 @@ After successfully adding over 400 songs to Let’s Sing! 2022, I expanded suppo
 - Python modules used: 
   - pandas (2.2.3)
   - tqdm (4.67.1)
-  - librosa (0.11.0)
-  - crepe (0.0.16)
-  - intel_tensorflow (2.91.1)
-  - numpy (1.23.5 - low due to intel_tensorflow compatibility, higher version is possible with generic version of tensorflow)
+  - numpy (1.23.5) - low due to intel_tensorflow compatibility, higher version is possible with generic version of tensorflow
+  - needed only for the slower (more accurate?) pitch correction:
+    - librosa (0.11.0)
+    - crepe (0.0.16)
+    - intel_tensorflow (2.91.1)
 
 ## Usage
 0. Install Let's Sing! 2022 or 2025 to your console and install one DLC song pack, note your COREID and DLCID values.
@@ -34,7 +35,7 @@ After successfully adding over 400 songs to Let’s Sing! 2022, I expanded suppo
 3. Adjust the convertFiles.py script if needed, i.e. change the **COREID** and/or **DLCID** presets at the top to match your installed Let's Sing! ROM and DLC. These are set by default:
    - for Let's Sing! **2022**, COREID = 0100CC30149B8000, DLCID = 0100CC30149B9011
    - for Let's Sing! **2025**, DLC_NAME = songs_fr, DLCID = 01001C101ED11002
-4. Run the converter from the command line ('2025' is the default output type, 'slow' is the default pitch correction method):
+4. Run the converter from the command line ('2025' is the default output type, 'fast' is the default pitch correction method):
 ```
 ConvertFiles.py [2022|2025] [fast|slow]
 ```

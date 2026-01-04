@@ -1,9 +1,7 @@
-import librosa
 import numpy as np
-import crepe
 from tqdm import tqdm
 
-def get_pitch_correction_suggestion(txt_data, audio_file, min_pitch, max_pitch):
+def get_pitch_correction_suggestion_slow(txt_data, audio_file, min_pitch, max_pitch):
 
     pitch_from_txt = get_txt_pitch_values(txt_data)
 
@@ -58,6 +56,9 @@ def get_audio_pitch_values(audio_file):
     }
 
 def analyze_pitch_from_audio(audio_file):
+    import librosa
+    import crepe
+
     y, sr = librosa.load(audio_file, sr=16000)
     time, frequency, confidence, activation = crepe.predict(y, sr, viterbi=True, model_capacity='tiny')
     frequency[confidence < 0.9] = np.nan
