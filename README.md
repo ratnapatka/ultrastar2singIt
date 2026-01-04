@@ -6,6 +6,7 @@ The goal of this tool is full automation, it processes the song covers, audio, v
  - Major props go to [dh4rry](https://github.com/dh4rry), the original creator of the ultrastar2singit.py script. He made the script for Let's Sing! 2019, but I see he's [still active and implementing a GUI for the tool](https://github.com/dh4rry/Ultrastar2singIt-Converter).
  - Many props go to MRJPGames over at gbatemp, he refined the original script, made it work for Let's Sing! 2022 and wrote a pretty good tutorial for getting the needed files from and onto your console in [this thread](https://gbatemp.net/threads/add-custom-songs-to-lets-sing-2022-from-ultrastar.607817/).
  - Overwhelming props go to [kosei](https://gbatemp.net/members/kosei.626603/), also at gbatemp, for writing a script to automate this whole process [in the same thread](https://gbatemp.net/threads/add-custom-songs-to-lets-sing-2022-from-ultrastar.607817/post-10037766).
+ - Thanks to [Omnia](https://gbatemp.net/members/omnia.573513/) from gbatemp for contributing to the project.
 
 UltraStar karaoke files lack proper standardization, so what began as a fun idea quickly evolved into a fully fledged project.
 <br>Inspired by kosei’s post and automation script, and compelled by poor standardization, I extensively modified both scripts to streamline the conversion process (and took some [Creative Liberties](#creative-liberties)).
@@ -16,7 +17,13 @@ After successfully adding over 400 songs to Let’s Sing! 2022, I expanded suppo
 - Python 3.10.11 (what is legacy support?)
 - [ffmpeg](https://ffmpeg.org/download.html) - I used version [7.1.1-full_build from gyan.dev](https://www.gyan.dev/ffmpeg/builds/)
 - [RAD Video Tools](https://www.radgametools.com/bnkdown.htm) (**needed only for Let's Sing 2025**) - install in default location **%ProgramFiles(x86)%\RADVideo** or change the path in the script
-- Python modules: pandas (2.2.3), tqdm (4.67.1)
+- Python modules used: 
+  - pandas (2.2.3)
+  - tqdm (4.67.1)
+  - librosa (0.11.0)
+  - crepe (0.0.16)
+  - intel_tensorflow (2.91.1)
+  - numpy (1.23.5 - low due to intel_tensorflow compatibility, higher version is possible with generic version of tensorflow)
 
 ## Usage
 0. Install Let's Sing! 2022 or 2025 to your console and install one DLC song pack, note your COREID and DLCID values.
@@ -27,7 +34,10 @@ After successfully adding over 400 songs to Let’s Sing! 2022, I expanded suppo
 3. Adjust the convertFiles.py script if needed, i.e. change the **COREID** and/or **DLCID** presets at the top to match your installed Let's Sing! ROM and DLC. These are set by default:
    - for Let's Sing! **2022**, COREID = 0100CC30149B8000, DLCID = 0100CC30149B9011
    - for Let's Sing! **2025**, DLC_NAME = songs_fr, DLCID = 01001C101ED11002
-4. Run the converter from the command line (2025 is chosen by default):<br>convertFiles.py [2022|2025]
+4. Run the converter from the command line ('2025' is the default output type, 'slow' is the default pitch correction method):
+```
+ConvertFiles.py [2022|2025] [fast|slow]
+```
 5. Check the **error.log** file for any errors during conversion. The script will not stop in case of errors and will skip to the next song. You can just rerun the script after any corrections in the files or script, the _Patch folder will get deleted and any previously successfully converted files will just be copied over from the songs' folders (they won't be encoded again).
 6. Copy the contents of the generated _Patch folder (COREID and/or DLCID folders) to your SD card **sd:/atmosphere/contents**.
 7. Run the game and sing!

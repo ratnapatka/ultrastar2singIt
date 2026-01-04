@@ -1,12 +1,12 @@
 import io
-import xml.etree.cElementTree as ET
-from xml.dom import minidom
-import sys
-import re
 import os
-import unicodedata
-import chardet
+import re
+import xml.etree.cElementTree as ET
 from difflib import SequenceMatcher
+from xml.dom import minidom
+
+import chardet
+import unicodedata
 
 OLD = '2022'
 NEW = '2025'
@@ -116,72 +116,26 @@ def merge_intervals(intervals):
     return merged
 
 
-def map_data(us_data, song_duration, pitchCorr, output_type=NEW):
+def map_data(us_data, song_duration, pitch_corr, output_type=NEW):
     sing_it = {"text": [], "notes": [], "pages": []}
     bpm = float(us_data["BPM"].replace(',', '.'))
     if "GAP" in us_data:
         gap = float(us_data["GAP"].replace(',', '.')) / 1000
     else:
         gap = 0.0
-    videoGap = 0.0
+    video_gap = 0.0
     if "VIDEOGAP" in us_data:
         # how many seconds the song is out of sync with the video
         #  positive - video starts before the song, the song will have silence added to the beginning
         #  negative - video starts after the song, the song will be trimmed at the start
-        videoGap = float(us_data["VIDEOGAP"].replace(',', '.'))
-
-    # edition_tag = us_data.get("EDITION", "").lower()
-
-    # if "EDITION" not in us_data or (
-    #    "singstar" not in edition_tag and
-    #    "sing" not in edition_tag and
-    #    "star" not in edition_tag
-    # ):
-    #    pitchCorr = 48
-
-    # START Check average pitch to define if correction is needed
-    total_pitch = 0
-    note_count = 0
-    all_pitches = []
-
-    for note in us_data["notes"]:
-        if note[0] == ":" or note[0] == "*":
-            try:
-                pitch = int(note[3])
-                total_pitch += pitch
-                note_count += 1
-                all_pitches.append(pitch)
-            except (ValueError, IndexError):
-                continue
-
-    average_pitch = total_pitch / note_count
-    min_pitch = min(all_pitches) if all_pitches else 0
-    max_pitch = max(all_pitches) if all_pitches else 0
-
-    required_corr = 0
-    TARGET_MAX = 81
-    TARGET_MIN = 43
-
-    if 40 <= average_pitch <= 80:
-        pitchCorr = 0
-    elif max_pitch > 33:
-        S_max = TARGET_MAX - max_pitch
-        required_corr = max(required_corr, S_max)
-    elif min_pitch < -5:
-        S_min = TARGET_MIN - min_pitch
-        required_corr = max(required_corr, S_min)
-    if required_corr > 0:
-        pitchCorr = required_corr
-    else:
-        pitchCorr = 48
-    # END Check average pitch to define if correction is needed
+        video_gap = float(us_data["VIDEOGAP"].replace(',', '.'))
 
     # min_note = 1
     last_page = 0.0
     end = 1
     for note in us_data["notes"]:
         if note[0] == ":" or note[0] == "*" or note[0] == "R" or note[0] == "F":
-            start = float(note[1]) * 60 / bpm / 4 + gap + videoGap
+            start = float(note[1]) * 60 / bpm / 4 + gap + video_gap
             end = start + float(note[2]) * 60 / bpm / 4
             lyric_text = strip_accents(note[4])
             lyric_text = lyric_text.replace("’", "'")
@@ -194,8 +148,6 @@ def map_data(us_data, song_duration, pitchCorr, output_type=NEW):
                 sing_it["text"].append({"t1": start, "t2": end, "value": lyric_text})
 
             pitch = int(note[3])
-            # if pitch < min_note:
-            #     pitch = min_note
 
             match (note[0]):
                 case "R" | "F": # rap ==== freestyle
@@ -205,17 +157,17 @@ def map_data(us_data, song_duration, pitchCorr, output_type=NEW):
                     full_note = f"#p1#.{lyric_text}#g5"
                     pass
                 case "*": # golden note
-                    full_note = f"#p{pitch + pitchCorr}#.{lyric_text}#g5"
+                    full_note = f"#p{pitch + pitch_corr}#.{lyric_text}#g5"
                     pass
                 case _: # normal note
-                    full_note = f"#p{pitch + pitchCorr}#.{lyric_text}"
+                    full_note = f"#p{pitch + pitch_corr}#.{lyric_text}"
                     pass
 
             sing_it["notes"].append({"t1": start, "t2": end, "value": full_note})
 
         elif note[0] == "-":
             start = last_page
-            end = float(note[1]) * 60 / bpm / 4 + gap + videoGap
+            end = float(note[1]) * 60 / bpm / 4 + gap + video_gap
             last_page = end
             sing_it["pages"].append(
                 {"t1": start, "t2": end, "value": ""})
@@ -299,7 +251,7 @@ def write_vxla_file(sing_it, filename, directory, song_duration, output_type):
     with open(os.path.join(directory, filename), "wb") as f:
         f.write(xmlstr.encode("Windows-1252"))
 
-def main(input_file, songDuration, pitchCorrect=0, s='', dir='', output_type=NEW):
+def main(input_file, song_duration, pitch_corr=0, s='', dir='', output_type=NEW):
     us_data = parse_file(input_file)
 
     if s:
@@ -307,5 +259,5 @@ def main(input_file, songDuration, pitchCorrect=0, s='', dir='', output_type=NEW
     else:
         output_file = re.sub('[^A-Za-z0-9]+', '', us_data["TITLE"])
 
-    sing_it = map_data(us_data, songDuration, pitchCorrect, output_type=output_type)
-    write_vxla_file(sing_it, output_file + '.vxla', directory=dir, song_duration=songDuration, output_type=output_type)
+    sing_it = map_data(us_data, song_duration, pitch_corr, output_type=output_type)
+    write_vxla_file(sing_it, output_file + '.vxla', directory=dir, song_duration=song_duration, output_type=output_type)
