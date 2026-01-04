@@ -14,6 +14,8 @@ from tqdm import tqdm
 
 import ultrastar2singit
 
+BINK_UNSUPPORTED_FORMATS = ('.flv', '.mkv', '.webm')
+
 # Lets Sing 2022 IDs
 COREID = '0100CC30149B8000'
 DLCID_2022 = '0100CC30149B9011' # Best of 90s Vol 3 Song Pack
@@ -123,21 +125,21 @@ def convert_files(dirsToConvert, output_type=NEW):
                         else:
                             quality = None
                         tqdm.write(str(file))
-                        temp_mp4_name = nameID + '.mp4'
-                        temp_mp4_file = listInDir / temp_mp4_name
-                        if file.suffix.lower() in ('.avi', '.divx', '.mp4', '.flv', '.mkv', '.webm'):
+                        if file.suffix.lower() in BINK_UNSUPPORTED_FORMATS:
+                            temp_mp4_name = nameID + '.mp4'
+                            temp_mp4_file = listInDir / temp_mp4_name
                             if not temp_mp4_file.exists():
                                 create_video(file, listInDir, temp_mp4_name, targetBitrateKbps)
+                            file = temp_mp4_file
 
-                            temp_size_bytes = temp_mp4_file.stat().st_size
-                            temp_size_mb = temp_size_bytes / (1024 * 1024)
-                            if temp_size_mb <= target_size_mb:
-                                compression_percentage = 100
-                            else:
-                                percentage = (target_size_mb / temp_size_mb) * 100
-                                compression_percentage = max(1, min(200, int(round(percentage))))
-
-                            create_video_bink(os.fspath(temp_mp4_file), listInDir, outputVideoFileName, compression_percentage, quality)
+                        video_size_bytes = file.stat().st_size
+                        video_size_mb = video_size_bytes / (1024 * 1024)
+                        if video_size_mb <= target_size_mb:
+                            compression_percentage = 100
+                        else:
+                            percentage = (target_size_mb / video_size_mb) * 100
+                            compression_percentage = max(1, min(200, int(round(percentage))))
+                        create_video_bink(file, listInDir, outputVideoFileName, compression_percentage, quality)
 
             if oggFileName not in filesAll:
                 create_audio(filesAvi, filesMp3, listInDir, oggFileName, videoGap)
@@ -166,7 +168,7 @@ def convert_files(dirsToConvert, output_type=NEW):
                                       None, quality=0.1)  # Convert to bink with low quality
 
             # generating vxla file
-            ultrastar2singit.main(filesTxt[-1], song_duration, pitchCorrect=0, s=nameID, dir=listInDir, output_type=output_type)
+            ultrastar2singit.main(filesTxt[-1], song_duration, pitch_correct=0, s=nameID, dir=listInDir, output_type=output_type)
 
             # Handle name.txt - create it at destination if it doesn't exist
             add_data_to_name_txt(DLCID, nameID, output_type, dlcName)
