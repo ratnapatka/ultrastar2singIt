@@ -278,7 +278,7 @@ def handle_xml_or_json(DLCID, json_file_name, list_in_dir, txt_data, name_id, ou
             "year": int(year),
             "timeless": "",
             "genre": genre,
-            "theme": "Love",
+            "theme": "Love, Deep, Party",
             "difficulty": "VeryEasy",
             "coopfriendly": "Coop"
         }
@@ -614,3 +614,4 @@ if __name__ == '__main__':
 
 
     main(args.output_type, args.pitch_correction_method)
+
