@@ -51,6 +51,32 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+def sanitize_name(name):
+    name = ''.join(c for c in unicodedata.normalize('NFD', name)
+                  if unicodedata.category(c) != 'Mn')
+    name = name.replace('...', '')
+    name = name.replace('…', '')
+    name = re.sub(r'[!?#$%\'"’´`“”()\[\]]', '', name)
+    return ' '.join(name.split()).strip()
+
+def rename_folders_physically():
+    tqdm.write("Sanitizing folder names...")
+    current_dirs = [x for x in p.iterdir() if x.is_dir()]
+    
+    for folder in current_dirs:
+        old_name = folder.name
+        if old_name.startswith(('_', '.')) or old_name in ['ffmpeg', patchFolderName]:
+            continue
+            
+        new_name = sanitize_name(old_name)
+        
+        if old_name != new_name:
+            try:
+                folder.rename(Path(new_name))
+                tqdm.write(f"Folder renamed: '{old_name}' -> '{new_name}'")
+            except Exception as e:
+                tqdm.write(f"Error while trying to rename {old_name}: {e}")
+
 def convert_files(dirs_to_convert, output_type=NEW, pitch_correction_method=FAST):
 
     DLCID = DLCID_2022 if output_type == OLD else DLCID_2025
@@ -565,6 +591,7 @@ def delete_patch_folder():
 
 def main(output_type=NEW, pitch_correction_method=FAST):
     delete_patch_folder()
+    rename_folders_physically()
     dirs_to_convert = find_folders_to_convert()
 
     tqdm.write('Beginning conversion to output type: ' + str(output_type))
@@ -584,5 +611,6 @@ if __name__ == '__main__':
                              '[slow] - using audio analyzer (default: fast)')
 
     args = parser.parse_args()
+
 
     main(args.output_type, args.pitch_correction_method)
