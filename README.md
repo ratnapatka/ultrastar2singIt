@@ -59,4 +59,3 @@ _Not mandatory reading:_
 1. Some songs contain lyrics files for duets, these are currently ignored by the script.
 2. Genres for songs are loaded from the #GENRE tag if the file contains it, otherwise it defaults to Pop. I dabbled with the idea of pinging an external API (such as [genious](https://genius.com/)) to extract the genre, but I couldn't find a free option.
 3. All songs will have the lowest difficulty rating, this can probably be calculated from the song's length, BPM value, number of lyrics, variations in pitch, etc.
-4. Let's Sing! 2025 has added a "theme" value for songs (Party, Love, Deep) for unlocking collectibles I think, a song may have any combination of these. I wasn't sure how to correctly assign this value so the script applies Love to all songs (probably should've put all three instead).
