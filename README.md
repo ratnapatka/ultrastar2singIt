@@ -44,7 +44,7 @@ which features a superior song selection menu designed for hundreds of tracks ra
 0. Install Let's Sing! 2022 or 2025 to your console and install one DLC song pack, note your COREID and DLCID values.
 1. Make a working folder (I've named it "project") containing the **two Python scripts** and the **ffmpeg** release.
 To the same folder, copy all the UltraStar **song folders** you want to convert, this is what the folder should look like: 
-   <img width="829" height="505"  alt="ProjectRoot/\n ├── ffmpeg/\n ├── Oasis - Wonderwall/\n ├── R.E.M. - Man on the Moon/\n ├── ConvertFiles.py\n ├── PitchAnalyzer.py\n └── UltrastarToSingit.py" src="https://github.com/user-attachments/assets/6fa56ee0-2029-42a1-8662-53f25d83631a" />
+   <img width="927" height="540" alt="ProjectRoot/\n ├── ffmpeg/\n ├── Oasis - Wonderwall/\n ├── R.E.M. - Man on the Moon/\n ├── ConvertFiles.py\n ├── PitchAnalyzer.py\n └── UltrastarToSingit.py" src="https://github.com/user-attachments/assets/4628d2fc-d28d-45b5-9246-17814f5b368d" />
 2. (**optional**) If you wish to keep the songs included in the DLC instead of replacing them (also make sure you don't mix 
    up your versions because they both use name.txt for their own purposes):
    - for Let's Sing! **2022**, copy the **name.txt** (found in DLCID\romfs) and **SongsDLC.tsv** 
