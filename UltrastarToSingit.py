@@ -1,4 +1,5 @@
 import io
+import json
 import os
 import re
 import xml.etree.cElementTree as ET
@@ -6,14 +7,39 @@ from difflib import SequenceMatcher
 from xml.dom import minidom
 
 import chardet
+import requests
 import unicodedata
+from bs4 import BeautifulSoup
+from Levenshtein import distance as levenshtein_distance
 
 OLD = '2022'
 NEW = '2025'
 
-def strip_accents(s):
-    return ''.join(c for c in unicodedata.normalize('NFD', s)
+replacements = {
+    "’": "'", "‘": "'", "‚": "'", "‹": "'", "›": "'", "`": "'",
+    '“': '"', '”': '"', "„": '"', "«": '"', "»": '"',
+    "œ": "oe", "Œ": "OE", "æ": "ae", "Æ": "AE",
+    "ﬁ": "fi", "ﬂ": "fl",
+    "–": "-", "—": "-", "−": "-",
+    "…": "..."
+}
+
+def normalize_text(text):
+    for old, new in replacements.items():
+        text = text.replace(old, new)
+    return ''.join(c for c in unicodedata.normalize('NFD', text)
                    if unicodedata.category(c) != 'Mn')
+
+def normalize_for_url(text):
+    text = text.strip()
+    # spaces and some special characters are replaced with hyphens, based on songs from LP - Reanimation
+    text = re.sub(r'[_:@\\\/\s]', '-', text)
+    # keep hyphens, but remove other special characters (parentheses, punctuation, etc.)
+    text = re.sub(r'[^\w-]', '', text)
+    text = re.sub(r'-+', '-', text)
+    text = text.strip('-')
+    return text
+
 
 def detect_encoding(filename):
     with open(filename, 'rb') as f:
@@ -22,7 +48,11 @@ def detect_encoding(filename):
     return result['encoding'] or 'utf-8'
 
 def parse_file(filename):
-    data = {"notes": []}
+    data = {
+        "notes": [], # represents rows in the txt file
+        "lyrics_map_list": [] # a list of maps, each map contains a full word lyric and a start beat
+                              # (lyrics spread over multiple beats are grouped by the starting beat)
+    }
     encoding = detect_encoding(filename)
     with io.open(filename, "r", encoding=encoding, errors='ignore') as f:
         for line in f:
@@ -116,8 +146,8 @@ def merge_intervals(intervals):
     return merged
 
 
-def map_data(us_data, song_duration, pitch_corr, output_type=NEW):
-    sing_it = {"text": [], "notes": [], "pages": []}
+def map_data(us_data, song_duration, pitch_corr, input_file_name):
+    sing_it = {"text": [], "notes": [], "pages": [], "structure": []}
     bpm = float(us_data["BPM"].replace(',', '.'))
     if "GAP" in us_data:
         gap = float(us_data["GAP"].replace(',', '.')) / 1000
@@ -130,22 +160,32 @@ def map_data(us_data, song_duration, pitch_corr, output_type=NEW):
         #  negative - video starts after the song, the song will be trimmed at the start
         video_gap = float(us_data["VIDEOGAP"].replace(',', '.'))
 
-    # min_note = 1
     last_page = 0.0
     end = 1
+    previous_line = []
     for note in us_data["notes"]:
-        if note[0] == ":" or note[0] == "*" or note[0] == "R" or note[0] == "F":
+        if note[0] in [':', '*', 'F', 'R']:
             start = float(note[1]) * 60 / bpm / 4 + gap + video_gap
             end = start + float(note[2]) * 60 / bpm / 4
-            lyric_text = strip_accents(note[4])
-            lyric_text = lyric_text.replace("’", "'")
-            lyric_text = lyric_text.replace("‘", "'")
-            lyric_text = lyric_text.replace('“', '"')
-            lyric_text = lyric_text.replace('”', '"')
-            lyric_text = lyric_text.replace('œ', 'oe')
-            if lyric_text.strip() != "~":  # if the lyric is just a tilde, it means no lyrics
-                lyric_text = lyric_text.replace('~', '-')
+            lyric_text = normalize_text(note[4])
+            if lyric_text.strip() != "~":  # if the lyric is just a tilde, don't add it to on-screen lyrics
+                lyric_text = lyric_text.replace('~', '') # tildes in the middle of bottom lyrics are ugly
                 sing_it["text"].append({"t1": start, "t2": end, "value": lyric_text})
+
+                if len(us_data['lyrics_map_list']) == 0 or lyric_text.startswith(" ") or previous_line[0] in ['-']:
+                    # save the beginning of a word and its start beat
+                    # (first run, begins with a space or following a page break)
+                    us_data['lyrics_map_list'].append({
+                        'start_beat': int(note[1]),
+                        'end_beat': int(note[1]) + int(note[2]),
+                        'lyrics': lyric_text
+                    })
+                else:
+                    # concatenate with previous lyric text
+                    # (the word starts without a space and the previous line wasn't a page break)
+                    us_data['lyrics_map_list'][-1]['lyrics'] += lyric_text
+                    us_data['lyrics_map_list'][-1]['end_beat'] = int(note[1]) + int(note[2])
+                previous_line = note
 
             pitch = int(note[3])
 
@@ -169,19 +209,193 @@ def map_data(us_data, song_duration, pitch_corr, output_type=NEW):
             start = last_page
             end = float(note[1]) * 60 / bpm / 4 + gap + video_gap
             last_page = end
-            sing_it["pages"].append(
-                {"t1": start, "t2": end, "value": ""})
+            sing_it["pages"].append({"t1": start, "t2": end, "value": ""})
+            # add a space to the end of the previous lyric (ultrastar lyrics omit a space along page breaks)
+            us_data['lyrics_map_list'][-1]['lyrics'] += " "
+            previous_line = note
+
         elif note[0] == "E":
             if end > last_page:
                 start = last_page
                 sing_it["pages"].append({"t1": start, "t2": end, "value": ""})
                 sing_it["pages"].append({"t1": end, "t2": song_duration, "value": ""})
 
-    auto_refrains = find_refrains(sing_it)
-    merged_sections = merge_intervals(auto_refrains)
-    sing_it["structure"] = merged_sections
+    if 'MEDLEYSTARTBEAT' in us_data and 'MEDLEYENDBEAT' in us_data:
+        medley_start_beat = int(us_data['MEDLEYSTARTBEAT'])
+        medley_end_beat = int(us_data['MEDLEYENDBEAT'])
+        chorus_from_file = get_lyrics_for_beat_range(us_data['lyrics_map_list'], medley_start_beat, medley_end_beat)
+        choruses = [chorus_from_file] * 5 # simulate multiple choruses, extras will get ignored
+    else:
+        choruses = genius_get_choruses(input_file_name)
+
+    if choruses:
+        matched_choruses = match_choruses_to_beats(us_data['lyrics_map_list'], choruses, similarity_threshold=0.7)
+        for chorus in matched_choruses:
+            sing_it['structure'].append({'t1': float(chorus['start_beat']) * 60 / bpm / 4 + gap + video_gap,
+                                         't2': float(chorus['end_beat']) * 60 / bpm / 4 + gap + video_gap,
+                                         'value': 'feat'})
+    else:
+        auto_refrains = find_refrains(sing_it)
+        merged_sections = merge_intervals(auto_refrains)
+        sing_it["structure"] = merged_sections
 
     return sing_it
+
+
+def get_lyrics_for_beat_range(lyrics_map_list, start_beat, end_beat):
+    lyrics_parts = []
+
+    for line in lyrics_map_list:
+        if start_beat <= line['start_beat'] <= end_beat:
+            lyrics_parts.append(line['lyrics'])
+
+    return ''.join(lyrics_parts)
+
+def genius_get_choruses(input_file_name, use_cache=True):
+    song_dir = input_file_name.parent
+    song_name = input_file_name.stem
+
+    # load from cache if available
+    cache_file = f"{song_dir}\\{song_name}_genius_cache.json"
+    if use_cache and os.path.exists(cache_file):
+        with open(cache_file, 'r', encoding='utf-8') as f:
+            cached_data = json.load(f)
+            return cached_data['choruses']
+
+    song_name = input_file_name.stem
+    song_name = normalize_for_url(song_name)
+    url = f'https://genius.com/{song_name}-lyrics'
+    response = requests.get(url)
+    # If direct URL fails, try search
+    if response.status_code != 200:
+        url = genius_search_for_correct_path(song_name)
+        if not url:
+            return []
+        response = requests.get(url)
+
+
+    soup = BeautifulSoup(response.content, 'html.parser')
+    lyrics_divs = soup.find_all(
+        'div',class_=lambda x: x and x.startswith('Lyrics__Container-sc'))
+    lyrics = ""
+    for div in lyrics_divs:
+        for excluded in div.find_all(attrs={'data-exclude-from-selection': 'true'}):
+            excluded.decompose()
+        lyrics += " ".join(div.stripped_strings)
+
+    choruses = []
+    pattern = r'\[Chorus(?:[:\s][^\]]*?)?\](.*?)(?=\[(?!Chorus)|\Z)'
+    matches = re.findall(pattern, lyrics, re.DOTALL | re.IGNORECASE)
+
+    for match in matches:
+        choruses.append(match)
+
+    # Save to cache
+    cache_data = {
+        'url': url,
+        'lyrics': lyrics,
+        'choruses': choruses
+    }
+    with open(cache_file, 'w', encoding='utf-8') as f:
+        json.dump(cache_data, f, indent=2, ensure_ascii=False)
+    return choruses
+
+def genius_search_for_correct_path(query):
+    search_url = "https://genius.com/api/search/multi"
+    params = {'q': query}
+
+    try:
+        response = requests.get(search_url, params=params)
+        response.raise_for_status()
+        data = response.json()
+
+        # Navigate through the API response structure
+        sections = data.get('response', {}).get('sections', [])
+        for section in sections:
+            if section.get('type') == 'song':
+                hits = section.get('hits', [])
+                if hits:
+                    song_path = hits[0]['result']['path']
+                    return f"https://genius.com{song_path}"
+
+        return None
+    except Exception:
+        return None
+
+def match_choruses_to_beats(lyrics_map_list, genius_choruses, similarity_threshold=0.8):
+    matched_choruses = []
+    used_beat_ranges = []  # Track already matched beat ranges
+
+    for chorus_text in genius_choruses:
+        best_match = None
+        best_similarity = 0
+
+        words = [lyrics_map['lyrics'].lower().strip() for lyrics_map in lyrics_map_list]
+        # Slide a window across the full lyrics
+        for window_size in range(len(chorus_text.split()) - 5,
+                                 len(chorus_text.split()) + 5):
+            if window_size <= 0 or window_size > len(words):
+                continue
+
+            for i in range(len(words) - window_size + 1):
+                window_text = ' '.join(words[i:i + window_size])
+
+                # Calculate Levenshtein similarity
+                distance = levenshtein_distance(chorus_text, window_text)
+                max_len = max(len(chorus_text), len(window_text))
+                similarity = 1 - (distance / max_len) if max_len > 0 else 0
+
+                if similarity > best_similarity:
+                    beats = word_positions_to_beats(lyrics_map_list, i, i + window_size)
+                    if beats:
+                        # Check if this beat range overlaps with already used ranges
+                        overlaps = any(
+                            not (beats['end_beat'] < used['start_beat'] or
+                                 beats['start_beat'] > used['end_beat'])
+                            for used in used_beat_ranges
+                        )
+
+                        if not overlaps:
+                            best_similarity = similarity
+                            best_match = {
+                                'text': window_text,
+                                'similarity': similarity,
+                                'beats': beats
+                            }
+
+        if best_match and best_match['similarity'] >= similarity_threshold:
+            matched_choruses.append({
+                'genius_text': chorus_text,
+                'matched_text': best_match['text'],
+                'similarity': best_match['similarity'],
+                'start_beat': best_match['beats']['start_beat'],
+                'end_beat': best_match['beats']['end_beat']
+            })
+            used_beat_ranges.append(best_match['beats'])
+
+    return matched_choruses
+
+def word_positions_to_beats(lyrics_map_list, start_word, end_word):
+    word_count = 0
+    start_beat = None
+    end_beat = None
+
+    for lyrics_map in lyrics_map_list:
+        if word_count == start_word:
+            start_beat = lyrics_map['start_beat']
+
+        word_count += 1
+
+        if word_count == end_word:
+            end_beat = lyrics_map['end_beat']
+            break
+
+    if start_beat is not None and end_beat is not None:
+        return {
+            'start_beat': start_beat,
+            'end_beat': end_beat
+        }
+    return None
 
 def write_intervals(interval_arr, parent):
     for interval in interval_arr:
@@ -251,13 +465,13 @@ def write_vxla_file(sing_it, filename, directory, song_duration, output_type):
     with open(os.path.join(directory, filename), "wb") as f:
         f.write(xmlstr.encode("Windows-1252"))
 
-def main(input_file, song_duration, pitch_corr=0, s='', dir='', output_type=NEW):
-    us_data = parse_file(input_file)
+def main(input_file_name, song_duration, pitch_corr=0, s='', directory='', output_type=NEW):
+    us_data = parse_file(input_file_name)
 
     if s:
         output_file = s
     else:
         output_file = re.sub('[^A-Za-z0-9]+', '', us_data["TITLE"])
 
-    sing_it = map_data(us_data, song_duration, pitch_corr, output_type=output_type)
-    write_vxla_file(sing_it, output_file + '.vxla', directory=dir, song_duration=song_duration, output_type=output_type)
+    sing_it = map_data(us_data, song_duration, pitch_corr, input_file_name=input_file_name)
+    write_vxla_file(sing_it, output_file + '.vxla', directory=directory, song_duration=song_duration, output_type=output_type)

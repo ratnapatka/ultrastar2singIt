@@ -97,10 +97,10 @@ def convert_files(dirs_to_convert, output_type=NEW, pitch_correction_method=FAST
             split_dir_name = dir_long_name.split(' - ')
             artist_dir_name = strip_accents(split_dir_name[0])
             title_dir_name = strip_accents(split_dir_name[1])
-            arist_caps = [word[0].upper() for word in artist_dir_name.split()]
-            arist_cap = ''.join(arist_caps)
+            artist_caps = [word[0].upper() for word in artist_dir_name.split()]
+            artist_cap = ''.join(artist_caps)
             title_lower = ''.join(e.lower() for e in title_dir_name if e.isalnum())
-            name_id = arist_cap + title_lower
+            name_id = artist_cap + title_lower
 
             tqdm.write(name_id)
 
@@ -202,7 +202,7 @@ def convert_files(dirs_to_convert, output_type=NEW, pitch_correction_method=FAST
                                                                                 min_pitch=PITCH_MIN, max_pitch=PITCH_MAX)
             else:
                 pitch_corr = PitchAnalyzer.get_pitch_correction_suggestion_fast(txt_data,min_pitch=PITCH_MIN, max_pitch=PITCH_MAX)
-            UltrastarToSingit.main(files_txt[-1], song_duration, pitch_corr, s=name_id, dir=list_in_dir, output_type=output_type)
+            UltrastarToSingit.main(files_txt[-1], song_duration, pitch_corr, s=name_id, directory=list_in_dir, output_type=output_type)
 
             # Handle name.txt - create it at destination if it doesn't exist
             add_data_to_name_txt(DLCID, name_id, output_type, dlc_name)
