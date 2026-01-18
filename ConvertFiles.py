@@ -65,7 +65,7 @@ def rename_folders_physically():
     
     for folder in current_dirs:
         old_name = folder.name
-        if old_name.startswith(('_', '.')) or old_name in ['ffmpeg', patchFolderName]:
+        if old_name.startswith(('_', '.')) or old_name in ['ffmpeg', patch_folder_name]:
             continue
             
         new_name = sanitize_name(old_name)
