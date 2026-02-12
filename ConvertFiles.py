@@ -65,7 +65,7 @@ def rename_folders_physically():
     
     for folder in current_dirs:
         old_name = folder.name
-        if old_name.startswith(('_', '.')) or old_name in ['ffmpeg', patchFolderName]:
+        if old_name.startswith(('_', '.')) or old_name in ['ffmpeg', patch_folder_name]:
             continue
             
         new_name = sanitize_name(old_name)
@@ -77,7 +77,7 @@ def rename_folders_physically():
             except Exception as e:
                 tqdm.write(f"Error while trying to rename {old_name}: {e}")
 
-def convert_files(dirs_to_convert, output_type=NEW, pitch_correction_method=FAST):
+def convert_files(dirs_to_convert, output_type=NEW, pitch_correction_method=FAST, ignore_medley=False):
 
     DLCID = DLCID_2022 if output_type == OLD else DLCID_2025
 
@@ -97,10 +97,10 @@ def convert_files(dirs_to_convert, output_type=NEW, pitch_correction_method=FAST
             split_dir_name = dir_long_name.split(' - ')
             artist_dir_name = strip_accents(split_dir_name[0])
             title_dir_name = strip_accents(split_dir_name[1])
-            arist_caps = [word[0].upper() for word in artist_dir_name.split()]
-            arist_cap = ''.join(arist_caps)
+            artist_caps = [word[0].upper() for word in artist_dir_name.split()]
+            artist_cap = ''.join(artist_caps)
             title_lower = ''.join(e.lower() for e in title_dir_name if e.isalnum())
-            name_id = arist_cap + title_lower
+            name_id = artist_cap + title_lower
 
             tqdm.write(name_id)
 
@@ -202,7 +202,7 @@ def convert_files(dirs_to_convert, output_type=NEW, pitch_correction_method=FAST
                                                                                 min_pitch=PITCH_MIN, max_pitch=PITCH_MAX)
             else:
                 pitch_corr = PitchAnalyzer.get_pitch_correction_suggestion_fast(txt_data,min_pitch=PITCH_MIN, max_pitch=PITCH_MAX)
-            UltrastarToSingit.main(files_txt[-1], song_duration, pitch_corr, s=name_id, dir=list_in_dir, output_type=output_type)
+            UltrastarToSingit.main(files_txt[-1], song_duration, pitch_corr, s=name_id, directory=list_in_dir, output_type=output_type, ignore_medley=ignore_medley)
 
             # Handle name.txt - create it at destination if it doesn't exist
             add_data_to_name_txt(DLCID, name_id, output_type, dlc_name)
@@ -589,14 +589,16 @@ def delete_patch_folder():
     except Exception as e:
         tqdm.write(f"Error deleting Patch folder: {e}")
 
-def main(output_type=NEW, pitch_correction_method=FAST):
+def main(output_type=NEW, pitch_correction_method=FAST, ignore_medley=False):
     delete_patch_folder()
     rename_folders_physically()
     dirs_to_convert = find_folders_to_convert()
 
     tqdm.write('Beginning conversion to output type: ' + str(output_type))
     tqdm.write('Pitch correction method: ' + str(pitch_correction_method))
-    convert_files(dirs_to_convert, output_type, pitch_correction_method)
+    if ignore_medley:
+        tqdm.write('MODE: Ignoring Medley tags (forcing Genius/Auto detection)')
+    convert_files(dirs_to_convert, output_type, pitch_correction_method, ignore_medley)
 
 if __name__ == '__main__':
     import argparse
@@ -610,8 +612,11 @@ if __name__ == '__main__':
                              '[fast] - using simple calculations '
                              '[slow] - using audio analyzer (default: fast)')
 
+# ADICIONADO: Flag opcional --no-medley
+    parser.add_argument('--no-medley', action='store_true', 
+                        help='Ignore MEDLEY tags in txt files and force Genius/Auto detection')
+
     args = parser.parse_args()
 
-
-    main(args.output_type, args.pitch_correction_method)
+    main(args.output_type, args.pitch_correction_method, args.no_medley)
 
