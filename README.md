@@ -54,9 +54,9 @@ To the same folder, copy all the UltraStar **song folders** you want to convert,
    your installed Let's Sing! ROM and DLC. These are set by default:
    - for Let's Sing! **2022**, COREID = 0100CC30149B8000, DLCID = 0100CC30149B9011
    - for Let's Sing! **2025**, DLC_NAME = songs_fr, DLCID = 01001C101ED11002
-4. Run the converter from the command line ('2025' is the default output type, 'fast' is the default pitch correction method):
+4. Run the converter from the command line ('2025' is the default output type, 'fast' is the default pitch correction method, medley tags are prioritized for chorus detection):
 ```
-ConvertFiles.py [2022|2025] [fast|slow]
+ConvertFiles.py [2022|2025] [fast|slow] [--no-medley]
 ```
 5. Check the **error.log** file for any errors during conversion. The script will not stop in case of errors and will
    skip to the next song. You can just rerun the script after any corrections in the files or script, the _Patch folder
