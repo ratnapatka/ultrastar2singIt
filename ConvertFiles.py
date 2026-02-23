@@ -77,7 +77,7 @@ def rename_folders_physically():
             except Exception as e:
                 tqdm.write(f"Error while trying to rename {old_name}: {e}")
 
-def convert_files(dirs_to_convert, output_type=NEW, pitch_correction_method=FAST, ignore_medley=False):
+def convert_files(dirs_to_convert, output_type=NEW, pitch_correction_method=FAST, ignore_medley=False, ignore_video=False):
 
     DLCID = DLCID_2022 if output_type == OLD else DLCID_2025
 
@@ -136,7 +136,7 @@ def convert_files(dirs_to_convert, output_type=NEW, pitch_correction_method=FAST
                 #  negative - video starts after the song
                 video_gap = float(txt_data['VIDEOGAP'].replace(',', '.'))
 
-            if files_avi:
+            if files_avi and not ignore_video:
                 file = files_avi[0]
                 duration = get_duration(os.fspath(file))
                 original_size_bytes = file.stat().st_size
@@ -187,14 +187,22 @@ def convert_files(dirs_to_convert, output_type=NEW, pitch_correction_method=FAST
 
             song_duration = get_duration(os.fspath(list_in_dir / ogg_file_name))
 
-            if not files_avi or not os.path.exists(os.path.join(list_in_dir / output_video_file_name)):
+            if not files_avi or ignore_video or not os.path.exists(os.path.join(list_in_dir / output_video_file_name)):
                 # If no video file was present in the song's directory, or if "RAD" Video Tools failed to convert it,
                 # create a still image video from the cover image
-                output_video_file_name_mp4 = name_id + '.mp4'
-                create_still_video_from_cover_image(files_jpg, files_txt, list_in_dir, output_video_file_name_mp4, song_duration, txt_data)
+                output_video_file_name_mp4 = name_id + '_cover.mp4'
+                if not os.path.exists(list_in_dir / output_video_file_name_mp4):
+                    create_still_video_from_cover_image(files_jpg, files_txt, list_in_dir, output_video_file_name_mp4, song_duration, txt_data)
+                else:
+                    tqdm.write(f"Static video already exists, skipping generation: {output_video_file_name_mp4}")
+
                 if output_type == NEW:
-                    create_video_bink(os.fspath(list_in_dir / output_video_file_name_mp4), list_in_dir, output_video_file_name,
-                                      None, quality=0.1)  # Convert to bink with low quality
+                    if not os.path.exists(list_in_dir / output_video_file_name):
+                        create_video_bink(os.fspath(list_in_dir / output_video_file_name_mp4), list_in_dir, output_video_file_name, None, quality=0.1)
+
+                elif output_type == OLD:
+                    if ignore_video or not os.path.exists(list_in_dir / output_video_file_name):
+                        shutil.copy2(list_in_dir / output_video_file_name_mp4, list_in_dir / output_video_file_name)
 
             # generating vxla file
             if pitch_correction_method == SLOW:
@@ -589,7 +597,7 @@ def delete_patch_folder():
     except Exception as e:
         tqdm.write(f"Error deleting Patch folder: {e}")
 
-def main(output_type=NEW, pitch_correction_method=FAST, ignore_medley=False):
+def main(output_type=NEW, pitch_correction_method=FAST, ignore_medley=False, ignore_video=False):
     delete_patch_folder()
     rename_folders_physically()
     dirs_to_convert = find_folders_to_convert()
@@ -598,7 +606,9 @@ def main(output_type=NEW, pitch_correction_method=FAST, ignore_medley=False):
     tqdm.write('Pitch correction method: ' + str(pitch_correction_method))
     if ignore_medley:
         tqdm.write('MODE: Ignoring Medley tags (forcing Genius/Auto detection)')
-    convert_files(dirs_to_convert, output_type, pitch_correction_method, ignore_medley)
+    if ignore_video:
+        tqdm.write('MODE: Ignoring original video (forcing still image video)')
+    convert_files(dirs_to_convert, output_type, pitch_correction_method, ignore_medley, ignore_video)
 
 if __name__ == '__main__':
     import argparse
@@ -612,11 +622,13 @@ if __name__ == '__main__':
                              '[fast] - using simple calculations '
                              '[slow] - using audio analyzer (default: fast)')
 
-# ADICIONADO: Flag opcional --no-medley
     parser.add_argument('--no-medley', action='store_true', 
                         help='Ignore MEDLEY tags in txt files and force Genius/Auto detection')
 
+    parser.add_argument('--no-video', action='store_true', 
+                        help='Ignore existing video files and force still video creation from cover')
+
     args = parser.parse_args()
 
-    main(args.output_type, args.pitch_correction_method, args.no_medley)
+    main(args.output_type, args.pitch_correction_method, args.no_medley, args.no_video)
 
