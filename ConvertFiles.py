@@ -94,13 +94,7 @@ def convert_files(dirs_to_convert, output_type=NEW, pitch_correction_method=FAST
             if not ' - ' in dir_long_name:
                 continue
 
-            split_dir_name = dir_long_name.split(' - ')
-            artist_dir_name = strip_accents(split_dir_name[0])
-            title_dir_name = strip_accents(split_dir_name[1])
-            artist_caps = [word[0].upper() for word in artist_dir_name.split()]
-            artist_cap = ''.join(artist_caps)
-            title_lower = ''.join(e.lower() for e in title_dir_name if e.isalnum())
-            name_id = artist_cap + title_lower
+            name_id = construct_name_id_from_directory_name(dir_long_name)
 
             tqdm.write(name_id)
 
@@ -248,6 +242,18 @@ def convert_files(dirs_to_convert, output_type=NEW, pitch_correction_method=FAST
             logger.exception(f"Error with directory {dir_long_name}")
             tqdm.write(f"Error with directory {dir_long_name}: {e}")
             continue
+
+
+def construct_name_id_from_directory_name(dir_long_name) -> str:
+    split_dir_name = dir_long_name.split(' - ')
+    artist_dir_name = strip_accents(split_dir_name[0])
+    title_dir_name = strip_accents(split_dir_name[1])
+    artist_caps = [word[0].upper() for word in artist_dir_name.split()]
+    artist_cap = ''.join(artist_caps)
+    title_lower = ''.join(e.lower() for e in title_dir_name if e.isalnum())
+    name_id = artist_cap + title_lower
+    return name_id
+
 
 def strip_accents(s):
    return ''.join(c for c in unicodedata.normalize('NFD', s)

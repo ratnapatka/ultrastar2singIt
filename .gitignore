@@ -1,3 +1,7 @@
 .idea
 error.log
+*.exe
+*.json
+*.tsv
+*.txt
 */

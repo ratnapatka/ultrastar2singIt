@@ -1,18 +1,19 @@
 import io
 import json
+import logging
 import os
 import re
-import logging
 import xml.etree.cElementTree as ET
 from difflib import SequenceMatcher
-from xml.dom import minidom
 from pathlib import Path
+from xml.dom import minidom
 
 import chardet
 import requests
 import unicodedata
-from bs4 import BeautifulSoup
 from Levenshtein import distance as levenshtein_distance
+from bs4 import BeautifulSoup
+from tqdm import tqdm
 
 OLD = '2022'
 NEW = '2025'
@@ -31,7 +32,7 @@ replacements = {
 }
 
 def log_debug(msg):
-    print(f"[DEBUG] {msg}")
+    tqdm.write(f"[DEBUG] {msg}")
 
 def normalize_text(text):
     for old, new in replacements.items():

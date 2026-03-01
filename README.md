@@ -1,14 +1,14 @@
 # UltraStar to Sing It Converter
-This tool helps you add custom songs to your Let's Sing! 2022 or 2025 game. It converts UltraStar karaoke files
-(found on a well known Spanish UltraStar site) to the Let's Sing! DLC format.
+This tool helps you add custom songs to your Let's Sing 2022 or 2025 game. It converts UltraStar karaoke files
+(found on a well known Spanish UltraStar site) to the Let's Sing DLC format.
 The goal of this tool is full automation, it processes the song covers, audio, video, lyrics files, and generates the
 required structure with minimal fiddling.
 
 ## Credits
  - Major props go to [dh4rry](https://github.com/dh4rry), the original creator of the ultrastar2singit.py script.
-   He made the script for Let's Sing! 2019, but I see he's 
+   He made the script for Let's Sing 2019, but I see he's 
    [still active and implementing a GUI for the tool](https://github.com/dh4rry/Ultrastar2singIt-Converter).
- - Many props go to MRJPGames over at gbatemp, he refined the original script, made it work for Let's Sing! 2022 
+ - Many props go to MRJPGames over at gbatemp, he refined the original script, made it work for Let's Sing 2022 
    and wrote a pretty good tutorial for getting the needed files from and onto your console in
    [this thread](https://gbatemp.net/threads/add-custom-songs-to-lets-sing-2022-from-ultrastar.607817/).
  - Overwhelming props go to [kosei](https://gbatemp.net/members/kosei.626603/), also at gbatemp,
@@ -20,7 +20,7 @@ required structure with minimal fiddling.
 UltraStar karaoke files lack proper standardization, so what began as a fun idea quickly evolved into a fully fledged project.
 <br>Inspired by kosei’s post and automation script, and compelled by poor standardization, I extensively modified both
 scripts to streamline the conversion process (and took some [Creative Liberties](#creative-liberties)).
-After successfully adding over 400 songs to Let’s Sing! 2022, I expanded support to the 2025 version,
+After successfully adding over 400 songs to Let’s Sing 2022, I expanded support to the 2025 version,
 which features a superior song selection menu designed for hundreds of tracks rather than just a few dozen.
 
 ## Requirements
@@ -41,19 +41,19 @@ which features a superior song selection menu designed for hundreds of tracks ra
     - intel_tensorflow (2.91.1)
 
 ## Usage
-0. Install Let's Sing! 2022 or 2025 to your console and install one DLC song pack, note your COREID and DLCID values.
+0. Install Let's Sing 2022 or 2025 to your console and install one DLC song pack, note your COREID and DLCID values.
 1. Make a working folder (I've named it "project") containing the **three Python scripts** and the **ffmpeg** release.
 To the same folder, copy all the UltraStar **song folders** you want to convert, this is what the folder should look like: 
    <img width="927" height="540" alt="ProjectRoot/\n ├── ffmpeg/\n ├── Oasis - Wonderwall/\n ├── R.E.M. - Man on the Moon/\n ├── ConvertFiles.py\n ├── PitchAnalyzer.py\n └── UltrastarToSingit.py" src="https://github.com/user-attachments/assets/4628d2fc-d28d-45b5-9246-17814f5b368d" />
 2. (**optional**) If you wish to keep the songs included in the DLC instead of replacing them (also make sure you don't mix 
    up your versions because they both use name.txt for their own purposes):
-   - for Let's Sing! **2022**, copy the **name.txt** (found in DLCID\romfs) and **SongsDLC.tsv** 
+   - for Let's Sing **2022**, copy the **name.txt** (found in DLCID\romfs) and **SongsDLC.tsv** 
      (found in COREID\romfs\Data\StreamingAssets) files from the game installation to the project folder,
-   - for Let's Sing! **2025**, copy the **songs_XX.json** (found in DLCID\romfs) file from the game installation to the project folder.
+   - for Let's Sing **2025**, copy the **songs_XX.json** (found in DLCID\romfs) file from the game installation to the project folder.
 3. Adjust the convertFiles.py script if needed, i.e. change the **COREID** and/or **DLCID** presets at the top to match
-   your installed Let's Sing! ROM and DLC. These are set by default:
-   - for Let's Sing! **2022**, COREID = 0100CC30149B8000, DLCID = 0100CC30149B9011
-   - for Let's Sing! **2025**, DLC_NAME = songs_fr, DLCID = 01001C101ED11002
+   your installed Let's Sing ROM and DLC. These are set by default:
+   - for Let's Sing **2022**, COREID = 0100CC30149B8000, DLCID = 0100CC30149B9011
+   - for Let's Sing **2025**, DLC_NAME = songs_fr, DLCID = 01001C101ED11002
 4. Run the converter from the command line ('2025' is the default output type, 'fast' is the default pitch correction method, medley tags are prioritized for chorus detection and video files are preferred):
 ```
 ConvertFiles.py [2022|2025] [fast|slow] [--no-medley] [--no-video]
@@ -71,7 +71,7 @@ _Not mandatory reading:_
 1. Some songs contain too many "F" (freestyle) notes, these notes seem mostly intended for rapping sections of songs and
    aren't scored. This is probably because rapping at a consistent pitch isn't possible so UltraStar apps just ignore them.
    This makes singing songs like Linkin Park's In The End a real snooze fest.
-   <br> Let's Sing! does support rapping though, every note with a pitch of 1 is considered a rap note. The pitch is ignored
+   <br> Let's Sing does support rapping though, every note with a pitch of 1 is considered a rap note. The pitch is ignored
    for these notes and only the timing matters. This is why the script considers all "F" notes to be "R" (rap) notes.
 2. Song previews (~30s soundbites) are automatically cut from the songs starting at 60 seconds into the song (where most medleys start)
    unless there are medley tags in the text file. 
@@ -85,7 +85,7 @@ _Not mandatory reading:_
    close itself without a popup or error message when it encounters an unsupported format (preferable), but for some rare
    songs (out of 500 songs I've converted, it only happens with Muse's Undisclosed Desires) the script will hang until you
    OK the error message.
-6. Most songs have a lower pitch value (~10) than Let's Sing! expects (~50). There are two ways of running the script to
+6. Most songs have a lower pitch value (~10) than Let's Sing expects (~50). There are two ways of running the script to
    mitigate this. By default, if the average pitch is under a certain level, the script adds a fixed value of 48 to all notes.
    <br>If you want more precision, run the script with the 'slow' argument to perform sound analysis on each song
    (~10 seconds), a difference in median pitch values between the txt and the song vocals will be added to all notes.
