@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import re
 import sys
+import threading
 from html import escape
 from pathlib import Path
 from typing import List, Tuple
@@ -12,28 +13,22 @@ import qdarktheme
 import unicodedata
 import yaml
 from PySide6 import QtCore
-from PySide6.QtCore import Qt, QDateTime, QFileSystemWatcher
+from PySide6.QtCore import Qt, QDateTime, QFileSystemWatcher, QThread, Signal
 from PySide6.QtGui import QIcon, QRegularExpressionValidator
 from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
                                QHBoxLayout, QLabel, QLineEdit, QPushButton,
                                QCheckBox, QTextEdit, QTableWidgetItem, QFileDialog, QGroupBox,
                                QGridLayout, QAbstractItemView,
                                QAbstractButton, QDialog, QTextBrowser, QDialogButtonBox, QComboBox)
-from munch import *
 
 import GuiElement
 import data.repository.DlcRepository as repository
-from config_loader import load_config
 from PreviewTable import PreviewTable
+from config_loader import load_config
 
 JSON = "json"
 XML = "xml"
-# import data.entity.DlcEntity as entity
 
-CORE_ID_DEFAULT_2022 = "0100CC30149B8000"
-DLC_ID_DEFAULT_2022 = "0100CC30149B9011"
-DLC_JSON_NAME_DEFAULT_2025 = "songs_fr"
-DLC_ID_DEFAULT_2025 = "01001C101ED11002"
 BROWSE = "Browse"
 
 VIDEO_EXTENSIONS = ('.mp4', '.mpeg', '.avi', '.divx', '.mkv', '.webm')
@@ -43,6 +38,26 @@ TXT_EXTENSIONS = '.txt'
 
 DEFAULT_INPUT_FOLDER_NAME = "My Songs"
 DEFAULT_OUTPUT_FOLDER_NAME = "_Patch"
+
+class ConversionWorker(QThread):
+    log_message = Signal(str)
+    finished = Signal()
+    error = Signal(str)
+
+    def __init__(self, cfg, stop_event):
+        super().__init__()
+        self.cfg = cfg
+        self.stop_event = stop_event
+
+    def run(self):
+        try:
+            import ConvertFiles
+            ConvertFiles.main(self.cfg, stop_event=self.stop_event)
+        except Exception as e:
+            self.error.emit(str(e))
+            return
+        self.finished.emit()
+
 
 def strip_accents(s):
     return ''.join(c for c in unicodedata.normalize('NFD', s)
@@ -127,8 +142,6 @@ class MainWindow(QMainWindow):
         self.folder_watcher = QFileSystemWatcher(self)
         self.folder_watcher.directoryChanged.connect(self.refresh_preview_from_watcher)
         self.folder_watcher.fileChanged.connect(self.refresh_preview_from_watcher)
-
-        self.watched_dir: str | None = None
 
         # Central widget with main layout
         central_widget = QWidget()
@@ -555,8 +568,6 @@ class MainWindow(QMainWindow):
             self.dlc_id_input.setText(dlc_entity.dlc_id)
             self.dlc_json_name_input.setText(dlc_entity.dlc_json_name)
         else:
-            # edition_entity = 'other'
-            # if not is_blank(self.cfg.core.id):
             edition_entity = repository.get_edition_by_core_id(str(self.cfg.core.id))
             self.core_edition_combo.setCurrentText(edition_entity)
             self.core_id_input.setText(str(self.cfg.core.id))
@@ -954,7 +965,6 @@ class MainWindow(QMainWindow):
                     item.setFlags(item.flags() & ~Qt.ItemIsEnabled)
 
     def start_conversion(self) -> None:
-        """Start the conversion process (validate + lock UI)."""
         self.preview_table.clearSelection()
         missing, invalid = self.required_fields_missing()
         if missing or invalid:
@@ -971,17 +981,13 @@ class MainWindow(QMainWindow):
         self.log("Saved config.")
         self.log("Starting conversion...")
 
-        #TODO start conversion in a worker thread:
-        # import ConvertFiles
-        # cfg = load_config()
-        # cfg = ConvertFiles.resolve_config(cfg)
-        # ConvertFiles.main(cfg)
+        self._stop_event = threading.Event()
+        self._worker = ConversionWorker(self.cfg, self._stop_event)
+        self._worker.log_message.connect(self.log)
+        self._worker.finished.connect(self._on_conversion_finished)
+        self._worker.error.connect(self._on_conversion_error)
+        self._worker.start()
 
-
-    def _thread_safe_log(self, msg: str) -> None:
-        """Callable that can be invoked from any thread; emits via signal."""
-        if self._worker:
-            self._worker.log_message.emit(msg)
 
     def _on_conversion_finished(self) -> None:
         self.conversion_running = False
@@ -995,12 +1001,11 @@ class MainWindow(QMainWindow):
         self.refresh_preview()
 
     def stop_conversion(self) -> None:
-        """Stop the conversion process (unlock UI)."""
         if not self.conversion_running:
             return
 
         self.log("Stopping conversion...")
-        #TODO stop convestion
+        self._stop_event.set()
 
         self.conversion_running = False
         self.set_controls_enabled(True)

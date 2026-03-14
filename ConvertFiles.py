@@ -362,13 +362,13 @@ def handle_xml_or_json(dlc_id, core_id, json_file_name, list_in_dir, txt_data,
         add_song_to_json(dlc_id, json_file_name, song_data, cfg)
 
 
-def create_meta_xml(UID, artist, genre, list_in_dir, name_id, title, xml_file_name, year):
+def create_meta_xml(uid, artist, genre, list_in_dir, name_id, title, xml_file_name, year):
     root = Et.Element("DLCSong")
     root.set("xmlns:xsi", "http://www.w3.org/2001/XMLSchema-instance")
     root.set("xmlns:xsd", "http://www.w3.org/2001/XMLSchema")
     Et.SubElement(root, "Genre").text = genre
     Et.SubElement(root, "Id").text = name_id
-    Et.SubElement(root, "Uid").text = str(UID)
+    Et.SubElement(root, "Uid").text = str(uid)
     Et.SubElement(root, "Artist").text = artist
     Et.SubElement(root, "Title").text = title
     Et.SubElement(root, "Year").text = year
@@ -493,7 +493,7 @@ def add_data_to_name_txt(dlc_id, name_id, output_format, dlc_json_name, cfg):
             outfile.write(name_id + '\n')
 
 
-def convert_files(dirs_to_convert, cfg):
+def convert_files(dirs_to_convert, cfg, stop_event=None):
     dlc_id = str(cfg.dlc.id)
     core_id = str(cfg.core.id) if cfg.core.id else None
     output_format = get_output_format(cfg)
@@ -509,6 +509,9 @@ def convert_files(dirs_to_convert, cfg):
     json_file_name = (dlc_json_name + '.json') if dlc_json_name else None
 
     for dir_long_name in tqdm(dirs_to_convert, desc="Converting folders"):
+        if stop_event and stop_event.is_set():
+            tqdm.write("Conversion stopped by user.")
+            break
         try:
             if ' - ' not in dir_long_name:
                 continue
@@ -661,7 +664,7 @@ def convert_files(dirs_to_convert, cfg):
             continue
 
 
-def main(cfg=None):
+def main(cfg=None, stop_event=None):
     
     if cfg is None:
         cfg = load_config()
@@ -684,7 +687,7 @@ def main(cfg=None):
         tqdm.write('MODE: Ignoring Medley tags (forcing Genius/Auto detection)')
     if ignore_video:
         tqdm.write('MODE: Ignoring original video (forcing still image video)')
-    convert_files(dirs_to_convert, cfg)
+    convert_files(dirs_to_convert, cfg, stop_event=stop_event)
 
 
 if __name__ == '__main__':
@@ -739,13 +742,9 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    # 1. Load config from YAML files (same as GUI)
     config = load_config()
-
-    # 2. Fill missing values from the DLC database
     config = resolve_config(config)
 
-    # 3. Apply CLI overrides (without saving)
     if args.dlc_id:
         config.dlc.id = args.dlc_id
     if args.dlc_json_name is not None:
