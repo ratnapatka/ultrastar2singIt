@@ -1,4 +1,4 @@
-# UltraStar to Sing It Converter
+# Let's Sing DLC Patcher
 This tool helps you add custom songs to your Let's Sing 2022 or 2025 game. It converts UltraStar karaoke files
 (found on a well known Spanish UltraStar site) to the Let's Sing DLC format.
 The goal of this tool is full automation, it processes the song covers, audio, video, lyrics files, and generates the
@@ -53,7 +53,7 @@ To the same folder, copy all the UltraStar **song folders** you want to convert,
 3. Adjust the convertFiles.py script if needed, i.e. change the **COREID** and/or **DLCID** presets at the top to match
    your installed Let's Sing ROM and DLC. These are set by default:
    - for Let's Sing **2022**, COREID = 0100CC30149B8000, DLCID = 0100CC30149B9011
-   - for Let's Sing **2025**, DLC_NAME = songs_fr, DLCID = 01001C101ED11002
+   - for Let's Sing **2025**, DLC_JSON_NAME = songs_fr, DLCID = 01001C101ED11002
 4. Run the converter from the command line ('2025' is the default output type, 'fast' is the default pitch correction method, medley tags are prioritized for chorus detection and video files are preferred):
 ```
 ConvertFiles.py [2022|2025] [fast|slow] [--no-medley] [--no-video]

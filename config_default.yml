@@ -1,0 +1,22 @@
+dlc:
+    id: 01001C101ED11002
+    json_name:
+core:
+    id:
+tools:
+    ffmpeg_path:
+    rad_path:
+folders:
+    input:
+    output:
+conversion_tweaks:
+    enable: False
+    dlc_songs:
+        include: False    
+        name_txt_path:
+        songs_json_path:
+        songs_dlc_tsv_path:
+    pitch_correction: fast
+    max_video_size: 50
+    ignore_medley_tags: False
+    still_video: False

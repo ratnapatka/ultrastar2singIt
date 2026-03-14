@@ -1,0 +1,16 @@
+conversion_tweaks:
+  dlc_songs:
+    include: false
+  enable: false
+  ignore_medley_tags: false
+  max_video_size: 50
+  pitch_correction: fast
+  still_video: false
+dlc:
+  id: 01001C101ED11002
+folders:
+  input: C:\Users\vu00388\git\ultrastar2singIt\My Songs
+  output: C:\Users\vu00388\git\ultrastar2singIt\_Patch
+tools:
+  ffmpeg_path: C:\Users\vu00388\git\ultrastar2singIt\ffmpeg.exe
+  rad_path: C:\Users\vu00388\git\ultrastar2singIt\radvideo64.exe
