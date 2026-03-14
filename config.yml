@@ -2,7 +2,7 @@ conversion_tweaks:
   dlc_songs:
     include: false
   enable: false
-  ignore_medley_tags: false
+  no_medley: false
   max_video_size: 50
   pitch_correction: fast
   still_video: false

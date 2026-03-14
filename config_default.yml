@@ -18,5 +18,5 @@ conversion_tweaks:
         songs_dlc_tsv_path:
     pitch_correction: fast
     max_video_size: 50
-    ignore_medley_tags: False
+    no_medley: False
     still_video: False

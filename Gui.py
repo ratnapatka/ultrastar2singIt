@@ -23,6 +23,7 @@ from munch import *
 
 import GuiElement
 import data.repository.DlcRepository as repository
+from config_loader import load_config
 from PreviewTable import PreviewTable
 
 JSON = "json"
@@ -586,7 +587,7 @@ class MainWindow(QMainWindow):
         self.pitch_correction_checkbox.setChecked(True if self.cfg.conversion_tweaks.pitch_correction.lower() == 'slow' else False)
         self.max_video_size.setText(str(self.cfg.conversion_tweaks.max_video_size))
         self.max_video_size_fv()
-        self.ignore_medley_checkbox.setChecked(self.cfg.conversion_tweaks.ignore_medley_tags)
+        self.ignore_medley_checkbox.setChecked(self.cfg.conversion_tweaks.no_medley)
         self.still_video_checkbox.clicked.connect(self.still_video_checkbox_fv)
         self.still_video_checkbox.setChecked(self.cfg.conversion_tweaks.still_video)
         self.still_video_checkbox_fv()
@@ -970,7 +971,11 @@ class MainWindow(QMainWindow):
         self.log("Saved config.")
         self.log("Starting conversion...")
 
-        #TODO start conversion
+        #TODO start conversion in a worker thread:
+        # import ConvertFiles
+        # cfg = load_config()
+        # cfg = ConvertFiles.resolve_config(cfg)
+        # ConvertFiles.main(cfg)
 
 
     def _thread_safe_log(self, msg: str) -> None:
@@ -1182,7 +1187,7 @@ class MainWindow(QMainWindow):
             "dlc_songs": dlc_songs_section,
             "pitch_correction": "slow" if self.pitch_correction_checkbox.isChecked() else "fast",
             "max_video_size": int(self.max_video_size.text()) if self.max_video_size.text().strip().isdigit() else None,
-            "ignore_medley_tags": self.ignore_medley_checkbox.isChecked(),
+            "no_medley": self.ignore_medley_checkbox.isChecked(),
             "still_video": self.still_video_checkbox.isChecked(),
         }
 
@@ -1190,35 +1195,6 @@ class MainWindow(QMainWindow):
         with open(user_path, 'w', encoding='utf-8') as f:
             yaml.dump(config_dict, f, default_flow_style=False, allow_unicode=True)
 
-def deep_override_config(default: dict, override: dict) -> dict:
-    merged = dict(default)
-    for key, override_value in override.items():
-        if (
-            key in merged
-            and isinstance(merged[key], dict)
-            and isinstance(override_value, dict)
-        ):
-            merged[key] = deep_override_config(merged[key], override_value)
-        elif override_value is not None:
-            merged[key] = override_value
-    return merged
-
-
-def load_config() -> Munch:
-    default_path = Path('.') / 'config_default.yml'
-    user_path = Path('.') / 'config.yml'
-
-    with open(default_path, 'r', encoding='utf-8') as f:
-        config_default = yaml.safe_load(f) or {}
-
-    if user_path.exists():
-        with open(user_path, 'r', encoding='utf-8') as f:
-            config_user = yaml.safe_load(f) or {}
-    else:
-        config_user = {}
-
-    merged = deep_override_config(config_default, config_user)
-    return munchify(merged)
 
 def main():
     app = QApplication(sys.argv)
