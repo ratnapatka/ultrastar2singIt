@@ -1,5 +1,4 @@
 .idea
-**/__pycache__/
 error.log
 *.exe
 *.json
@@ -7,6 +6,8 @@ error.log
 *.txt
 */
 config.yml
+AGENTS.md
 
 !data/
 !data/**
+**/__pycache__/

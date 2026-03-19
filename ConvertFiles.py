@@ -17,8 +17,8 @@ import UltrastarToSingit
 import data.repository.DlcRepository as repository
 from ConfigLoader import load_config
 
-XML_FORMAT = 'xml'   # Let's Sing 2022 / 2023 (no DLC JSON name)
-JSON_FORMAT = 'json'  # Let's Sing 2024+ (DLC JSON name present)
+XML_FORMAT = 'xml' # Let's Sing prior to 2024 (no DLC JSON name)
+JSON_FORMAT = 'json' # Let's Sing 2024+ (DLC JSON name present)
 
 SLOW = "slow"
 FAST = "fast"
@@ -31,12 +31,13 @@ NAME_TXT_FILE = 'name.txt'
 
 MUSIC_GENRE_LIST = ['Pop', 'Rap', 'Rock', 'Ballad', 'Electro']
 
-logging.basicConfig(
-    filename='error.log',
-    filemode='a',
-    format='%(asctime)s %(levelname)s: %(message)s',
-    level=logging.ERROR
-)
+# File handler — always active, captures ERROR+ to error.log
+_file_handler = logging.FileHandler('error.log', mode='a')
+_file_handler.setLevel(logging.ERROR)
+_file_handler.setFormatter(logging.Formatter('%(asctime)s %(levelname)s: %(message)s'))
+logging.getLogger().addHandler(_file_handler)
+logging.getLogger().setLevel(logging.DEBUG)
+
 logger = logging.getLogger(__name__)
 
 _ffmpeg_path = 'ffmpeg'
@@ -103,7 +104,7 @@ def sanitize_name(name):
 
 
 def rename_folders_physically():
-    tqdm.write("Sanitizing folder names...")
+    logger.info("Sanitizing folder names...")
     input_path = Path(_input_dir)
     current_dirs = [x for x in input_path.iterdir() if x.is_dir()]
 
@@ -117,9 +118,9 @@ def rename_folders_physically():
         if old_name != new_name:
             try:
                 folder.rename(folder.parent / new_name)
-                tqdm.write(f"Folder renamed: '{old_name}' -> '{new_name}'")
+                logger.info(f"Folder renamed: '{old_name}' -> '{new_name}'")
             except Exception as e:
-                tqdm.write(f"Error while trying to rename {old_name}: {e}")
+                logger.error(f"Error while trying to rename {old_name}: {e}")
 
 
 def construct_name_id_from_directory_name(dir_long_name) -> str:
@@ -147,13 +148,13 @@ def find_folders_to_convert():
 def delete_output_folder():
     try:
         if os.path.exists(_output_dir):
-            tqdm.write(f"Removing existing output directory: {_output_dir}")
+            logger.info(f"Removing existing output directory: {_output_dir}")
             shutil.rmtree(_output_dir)
-            tqdm.write("Output directory successfully removed")
+            logger.info("Output directory successfully removed")
     except PermissionError:
-        tqdm.write("Error: Could not delete output folder - permission denied")
+        logger.error("Error: Could not delete output folder - permission denied")
     except Exception as e:
-        tqdm.write(f"Error deleting output folder: {e}")
+        logger.error(f"Error deleting output folder: {e}")
 
 
 def get_duration(path_to_song):
@@ -190,7 +191,7 @@ def is_video_still_image(file):
 
 
 def create_still_video_from_cover_image(files_jpg, files_txt, list_in_dir, output_mp4_file_name, song_duration, txt_data):
-    tqdm.write('creating static video: ' + output_mp4_file_name)
+    logger.info('creating static video: ' + output_mp4_file_name)
     file = txt_data.get('COVER', None)
     if file:
         file = os.path.join(os.path.dirname(os.fspath(files_txt[-1])), txt_data.get('COVER', None))
@@ -220,7 +221,7 @@ def create_in_game_loading_picture(files_jpg, list_in_dir, png_in_game_file_name
                  'scale=512:512:force_original_aspect_ratio=increase,crop=512:512',
                  os.fspath(list_in_dir / png_in_game_file_name)]
     subprocess.run(ffmpeg_cmd)
-    tqdm.write('created : ' + png_in_game_file_name)
+    logger.info('created : ' + png_in_game_file_name)
 
 
 def create_cover_long(files_jpg, list_in_dir, png_long_file_name):
@@ -229,7 +230,7 @@ def create_cover_long(files_jpg, list_in_dir, png_long_file_name):
                  'scale=191:396:force_original_aspect_ratio=increase,crop=191:396',
                  os.fspath(list_in_dir / png_long_file_name)]
     subprocess.run(ffmpeg_cmd)
-    tqdm.write('created : ' + png_long_file_name)
+    logger.info('created : ' + png_long_file_name)
 
 
 def create_cover(files_jpg, list_in_dir, png_file_name):
@@ -238,7 +239,7 @@ def create_cover(files_jpg, list_in_dir, png_file_name):
                  'scale=256:256:force_original_aspect_ratio=increase,crop=256:256',
                   os.fspath(list_in_dir / png_file_name)]
     subprocess.run(ffmpeg_cmd)
-    tqdm.write('created : ' + png_file_name)
+    logger.info('created : ' + png_file_name)
 
 
 def create_audio_preview(files_avi, files_mp3, list_in_dir, ogg_preview_file_name, txt_data):
@@ -263,7 +264,7 @@ def create_audio_preview(files_avi, files_mp3, list_in_dir, ogg_preview_file_nam
                  '-af', 'loudnorm=I=-16:LRA=11:TP=-1.5',
                  os.fspath(list_in_dir / ogg_preview_file_name)]
     subprocess.run(ffmpeg_cmd)
-    tqdm.write('created : ' + ogg_preview_file_name)
+    logger.info('created : ' + ogg_preview_file_name)
 
 
 def create_audio(files_avi, files_mp3, list_in_dir, ogg_file_name, video_gap):
@@ -285,7 +286,7 @@ def create_audio(files_avi, files_mp3, list_in_dir, ogg_file_name, video_gap):
                  '-af', filter_cmd,
                  os.fspath(list_in_dir / ogg_file_name)]
     subprocess.run(ffmpeg_cmd)
-    tqdm.write('created : ' + ogg_file_name)
+    logger.info('created : ' + ogg_file_name)
 
 
 def create_video(file, list_in_dir, output_video_file_name, target_bitrate_kbps):
@@ -303,7 +304,7 @@ def create_video(file, list_in_dir, output_video_file_name, target_bitrate_kbps)
                  'scale=1280:720:force_original_aspect_ratio=increase,crop=1280:720,fps=25',
                   os.fspath(list_in_dir / output_video_file_name)]
     subprocess.run(ffmpeg_cmd)
-    tqdm.write('created : ' + output_video_file_name)
+    logger.info('created : ' + output_video_file_name)
     # Clean up FFmpeg passlog files
     for log_file in Path('.').glob('ffmpeg2pass*'):
         os.remove(log_file)
@@ -311,7 +312,7 @@ def create_video(file, list_in_dir, output_video_file_name, target_bitrate_kbps)
 
 def create_video_bink(file, list_in_dir, output_video_file_name, compression_percentage, quality):
     if not _rad_path:
-        tqdm.write("ERROR: RAD Video Tools path not configured - cannot create .bk2 video")
+        logger.error("RAD Video Tools path not configured - cannot create .bk2 video")
         return
     file_format = '/V' + str(200)
     remove_sound = '/L-1'
@@ -324,7 +325,7 @@ def create_video_bink(file, list_in_dir, output_video_file_name, compression_per
         quality_switch = '/Q' + str(quality)
         bink_args.append(quality_switch)
     bink_args.append('/#')
-    tqdm.write(f"Converting video {file} to {output_video_file_name} with args: {bink_args}")
+    logger.info(f"Converting video {file} to {output_video_file_name} with args: {bink_args}")
     subprocess.run(bink_args, capture_output=True, text=True)
 
 
@@ -502,7 +503,6 @@ def convert_files(dirs_to_convert, cfg, stop_event=None):
     pitch_correction_method = str(cfg.conversion_tweaks.pitch_correction or FAST).lower()
     ignore_medley = bool(cfg.conversion_tweaks.no_medley)
     ignore_video = bool(cfg.conversion_tweaks.still_video)
-
     # Map output_format to UltrastarToSingit OLD/NEW constants
     vxla_output_type = UltrastarToSingit.JSON if output_format == JSON_FORMAT else UltrastarToSingit.XML
 
@@ -510,14 +510,14 @@ def convert_files(dirs_to_convert, cfg, stop_event=None):
 
     for dir_long_name in tqdm(dirs_to_convert, desc="Converting folders"):
         if stop_event and stop_event.is_set():
-            tqdm.write("Conversion stopped by user.")
+            logger.info("Conversion stopped by user.")
             break
         try:
             if ' - ' not in dir_long_name:
                 continue
 
             name_id = construct_name_id_from_directory_name(dir_long_name)
-            tqdm.write(name_id)
+            logger.info(name_id)
 
             list_in_dir = Path(_input_dir) / dir_long_name
             files_all = [os.fspath(x.name) for x in list_in_dir.iterdir()]
@@ -538,7 +538,7 @@ def convert_files(dirs_to_convert, cfg, stop_event=None):
 
             # Getting info from the text file
             if not files_txt:
-                tqdm.write('No ultrastar text file found for ' + dir_long_name + ', skipping')
+                logger.warning('No ultrastar text file found for ' + dir_long_name + ', skipping')
                 continue
 
             # some songs also have a duet txt file containing '[MULTI]' in its name, alphabetically we want the last one
@@ -567,7 +567,7 @@ def convert_files(dirs_to_convert, cfg, stop_event=None):
                             quality = 0.1
                         else:
                             quality = None
-                        tqdm.write(str(file))
+                        logger.info(str(file))
                         temp_mp4_name = name_id + '.mp4'
                         temp_mp4_file = list_in_dir / temp_mp4_name
                         if file.suffix.lower() in ('.avi', '.divx', '.mp4', '.flv', '.mkv', '.webm'):
@@ -608,7 +608,7 @@ def convert_files(dirs_to_convert, cfg, stop_event=None):
                 if not os.path.exists(list_in_dir / output_video_file_name_mp4):
                     create_still_video_from_cover_image(files_jpg, files_txt, list_in_dir, output_video_file_name_mp4, song_duration, txt_data)
                 else:
-                    tqdm.write(f"Static video already exists, skipping generation: {output_video_file_name_mp4}")
+                    logger.info(f"Static video already exists, skipping generation: {output_video_file_name_mp4}")
 
                 if output_format == JSON_FORMAT:
                     if not os.path.exists(list_in_dir / output_video_file_name):
@@ -660,7 +660,7 @@ def convert_files(dirs_to_convert, cfg, stop_event=None):
 
         except Exception as e:
             logger.exception(f"Error with directory {dir_long_name}")
-            tqdm.write(f"Error with directory {dir_long_name}: {e}")
+            logger.error(f"Error with directory {dir_long_name}: {e}")
             continue
 
 
@@ -681,17 +681,19 @@ def main(cfg=None, stop_event=None):
     rename_folders_physically()
     dirs_to_convert = find_folders_to_convert()
 
-    tqdm.write('Beginning conversion - format: ' + output_format.upper())
-    tqdm.write('Pitch correction method: ' + pitch_method)
+    logger.info('Beginning conversion - format: ' + output_format.upper())
+    logger.info('Pitch correction method: ' + pitch_method)
     if ignore_medley:
-        tqdm.write('MODE: Ignoring Medley tags (forcing Genius/Auto detection)')
+        logger.info('MODE: Ignoring Medley tags (forcing Genius/Auto detection)')
     if ignore_video:
-        tqdm.write('MODE: Ignoring original video (forcing still image video)')
+        logger.info('MODE: Ignoring original video (forcing still image video)')
     convert_files(dirs_to_convert, cfg, stop_event=stop_event)
 
 
 if __name__ == '__main__':
     import argparse
+
+    logging.basicConfig(level=logging.DEBUG, format='%(message)s')
 
     parser = argparse.ArgumentParser(
         description="Convert UltraStar files to Let's Sing DLC format.",

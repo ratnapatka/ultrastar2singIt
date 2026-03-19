@@ -13,10 +13,11 @@ import requests
 import unicodedata
 from Levenshtein import distance as levenshtein_distance
 from bs4 import BeautifulSoup
-from tqdm import tqdm
 
 XML = 'xml'
 JSON = 'json'
+
+logger = logging.getLogger(__name__)
 
 GENIUS_HEADERS = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
@@ -32,7 +33,7 @@ replacements = {
 }
 
 def log_debug(msg):
-    tqdm.write(f"[DEBUG] {msg}")
+    logger.debug(msg)
 
 def normalize_text(text):
     for old, new in replacements.items():

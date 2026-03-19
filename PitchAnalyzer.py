@@ -1,18 +1,22 @@
+import logging
+
 import numpy as np
-from tqdm import tqdm
+
+logger = logging.getLogger(__name__)
+
 
 def get_pitch_correction_suggestion_slow(txt_data, audio_file, min_pitch, max_pitch):
 
     pitch_from_txt = get_txt_pitch_values(txt_data)
 
     if min_pitch < pitch_from_txt['min'] and max_pitch > pitch_from_txt['max']:
-        tqdm.write(f"Suggested pitch correction: 0")
+        logger.info("Suggested pitch correction: 0")
         return 0
     pitch_from_audio = get_audio_pitch_values(audio_file)
 
-    tqdm.write(f"Expected pitch range (from .txt): {pitch_from_txt}")
-    tqdm.write(f"Actual pitch range (from audio): {pitch_from_audio}")
-    tqdm.write(f"Suggested pitch correction: {pitch_from_audio['median'] - pitch_from_txt['median'] if pitch_from_audio else 0}")
+    logger.info(f"Expected pitch range (from .txt): {pitch_from_txt}")
+    logger.info(f"Actual pitch range (from audio): {pitch_from_audio}")
+    logger.info(f"Suggested pitch correction: {pitch_from_audio['median'] - pitch_from_txt['median'] if pitch_from_audio else 0}")
 
     return pitch_from_audio['median'] - pitch_from_txt['median'] if pitch_from_audio else 0
 
@@ -76,7 +80,7 @@ def get_pitch_correction_suggestion_fast(txt_data, min_pitch, max_pitch):
 
     required_corr = 0
     if 40 <= pitch_from_txt['average'] <= 80:
-        tqdm.write(f"Suggested pitch correction: 0")
+        logger.info("Suggested pitch correction: 0")
         return 0
     elif pitch_from_txt['max'] > 33:
         s_max = max_pitch - pitch_from_txt['max']
@@ -89,6 +93,6 @@ def get_pitch_correction_suggestion_fast(txt_data, min_pitch, max_pitch):
     else:
         pitch_corr = 48
 
-    tqdm.write(f"Suggested pitch correction: {pitch_corr}")
+    logger.info(f"Suggested pitch correction: {pitch_corr}")
 
     return pitch_corr

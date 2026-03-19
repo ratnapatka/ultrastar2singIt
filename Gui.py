@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import os
 import re
 import sys
@@ -20,6 +21,7 @@ from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
                                QCheckBox, QTextEdit, QTableWidgetItem, QFileDialog, QGroupBox,
                                QGridLayout, QAbstractItemView,
                                QAbstractButton, QDialog, QTextBrowser, QDialogButtonBox, QComboBox)
+from numpy.f2py.auxfuncs import throw_error
 
 import GuiElement
 import data.repository.DlcRepository as repository
@@ -39,6 +41,20 @@ TXT_EXTENSIONS = '.txt'
 DEFAULT_INPUT_FOLDER_NAME = "My Songs"
 DEFAULT_OUTPUT_FOLDER_NAME = "_Patch"
 
+logger = logging.getLogger(__name__)
+
+
+class QtLogHandler(logging.Handler):
+    """Logging handler that emits records via a Qt signal (thread-safe)."""
+
+    def __init__(self, signal):
+        super().__init__()
+        self.signal = signal
+
+    def emit(self, record):
+        self.signal.emit(self.format(record))
+
+
 class ConversionWorker(QThread):
     log_message = Signal(str)
     finished = Signal()
@@ -52,11 +68,21 @@ class ConversionWorker(QThread):
     def run(self):
         try:
             import ConvertFiles
+        except Exception as e:
+            self.error.emit(str(e))
+            return
+
+        handler = QtLogHandler(self.log_message)
+        handler.setLevel(logging.DEBUG)
+        handler.setFormatter(logging.Formatter('%(message)s'))
+        logging.getLogger().addHandler(handler)
+        try:
             ConvertFiles.main(self.cfg, stop_event=self.stop_event)
         except Exception as e:
             self.error.emit(str(e))
             return
-        self.finished.emit()
+        finally:
+            logging.getLogger().removeHandler(handler)
 
 
 def strip_accents(s):
@@ -980,7 +1006,6 @@ class MainWindow(QMainWindow):
 
         self.log("Saved config.")
         self.log("Starting conversion...")
-        self.log(self.cfg)
 
         self._stop_event = threading.Event()
         self._worker = ConversionWorker(self.cfg, self._stop_event)
@@ -993,23 +1018,21 @@ class MainWindow(QMainWindow):
     def _on_conversion_finished(self) -> None:
         self.conversion_running = False
         self.set_controls_enabled(True)
-        self.refresh_preview()
+        self.scan_input_folder()
 
     def _on_conversion_error(self, error_msg: str) -> None:
-        self.log(f"Conversion failed: {error_msg}")
-        self.conversion_running = False
-        self.set_controls_enabled(True)
-        self.refresh_preview()
+        self.log(f"Conversion stopped due to error: {error_msg}")
+        logger.error(f"Conversion failed: {error_msg}")
 
     def stop_conversion(self) -> None:
         if not self.conversion_running:
             return
 
-        self.log("Stopping conversion...")
+        self.log("Stopping conversion once the current item is done...")
+        set_element_enabled(self.stop_button, False)
+        self.conversion_running = False
         self._stop_event.set()
 
-        self.conversion_running = False
-        self.set_controls_enabled(True)
 
     def show_help(self) -> None:
         dlg = QDialog(self)
