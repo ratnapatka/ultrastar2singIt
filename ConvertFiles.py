@@ -504,7 +504,7 @@ def convert_files(dirs_to_convert, cfg, stop_event=None):
     ignore_video = bool(cfg.conversion_tweaks.still_video)
 
     # Map output_format to UltrastarToSingit OLD/NEW constants
-    vxla_output_type = UltrastarToSingit.NEW if output_format == JSON_FORMAT else UltrastarToSingit.OLD
+    vxla_output_type = UltrastarToSingit.JSON if output_format == JSON_FORMAT else UltrastarToSingit.XML
 
     json_file_name = (dlc_json_name + '.json') if dlc_json_name else None
 
@@ -665,10 +665,10 @@ def convert_files(dirs_to_convert, cfg, stop_event=None):
 
 
 def main(cfg=None, stop_event=None):
-    
+
     if cfg is None:
         cfg = load_config()
-        cfg = resolve_config(cfg)
+    cfg = resolve_config(cfg)
 
     _init_paths(cfg)
 
@@ -743,7 +743,6 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     config = load_config()
-    config = resolve_config(config)
 
     if args.dlc_id:
         config.dlc.id = args.dlc_id
