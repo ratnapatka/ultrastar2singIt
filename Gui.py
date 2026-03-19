@@ -24,7 +24,7 @@ from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
 import GuiElement
 import data.repository.DlcRepository as repository
 from PreviewTable import PreviewTable
-from config_loader import load_config
+from ConfigLoader import load_config
 
 JSON = "json"
 XML = "xml"
@@ -980,6 +980,7 @@ class MainWindow(QMainWindow):
 
         self.log("Saved config.")
         self.log("Starting conversion...")
+        self.log(self.cfg)
 
         self._stop_event = threading.Event()
         self._worker = ConversionWorker(self.cfg, self._stop_event)
@@ -1199,6 +1200,7 @@ class MainWindow(QMainWindow):
         user_path = Path('.') / 'config.yml'
         with open(user_path, 'w', encoding='utf-8') as f:
             yaml.dump(config_dict, f, default_flow_style=False, allow_unicode=True)
+        self.cfg = load_config()
 
 
 def main():

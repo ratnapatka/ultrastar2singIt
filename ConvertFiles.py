@@ -15,7 +15,7 @@ from tqdm import tqdm
 import PitchAnalyzer
 import UltrastarToSingit
 import data.repository.DlcRepository as repository
-from config_loader import load_config
+from ConfigLoader import load_config
 
 XML_FORMAT = 'xml'   # Let's Sing 2022 / 2023 (no DLC JSON name)
 JSON_FORMAT = 'json'  # Let's Sing 2024+ (DLC JSON name present)

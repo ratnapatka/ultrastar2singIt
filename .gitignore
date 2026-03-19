@@ -1,11 +1,12 @@
 .idea
-__pycache__/
+**/__pycache__/
 error.log
 *.exe
 *.json
 *.tsv
 *.txt
 */
+config.yml
 
 !data/
 !data/**

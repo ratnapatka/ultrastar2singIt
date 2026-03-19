@@ -26,19 +26,6 @@ def deep_override_config(default: dict, override: dict) -> dict:
 
 
 def load_config(base_dir: Optional[Union[str, Path]] = None) -> Munch:
-    """Load and merge config_default.yml + config.yml from *base_dir*.
-
-    Parameters
-    ----------
-    base_dir : path-like, optional
-        Directory containing the YAML files.  Defaults to the directory
-        that contains *this* source file (i.e. the project root).
-
-    Returns
-    -------
-    Munch
-        Merged configuration with dot-access.
-    """
     if base_dir is None:
         base_dir = Path(__file__).resolve().parent
     else:
