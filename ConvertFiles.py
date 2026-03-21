@@ -13,7 +13,7 @@ import unicodedata
 from tqdm import tqdm
 
 import PitchAnalyzer
-# import UltrastarToSingit
+import UltrastarToSingit
 import data.repository.DlcRepository as repository
 from ConfigLoader import load_config, load_default_config
 
