@@ -1048,7 +1048,7 @@ class MainWindow(QMainWindow):
 
     def show_help(self) -> None:
         dlg = QDialog(self)
-        dlg.setWindowTitle("Help – Let's Sing DLC Patcher")
+        dlg.setWindowTitle("HowTo – Let's Sing DLC Patcher")
         dlg.setWindowIcon(GuiElement.Icon.INFO_SQUARE_ROUNDED.get_icon())
         dlg.setModal(True)
         dlg.resize(1200, 1000)
@@ -1068,7 +1068,7 @@ class MainWindow(QMainWindow):
         dlg.exec()
 
     def help_html(self) -> str:
-        readme_path = bundle_dir() / "Help.md"
+        readme_path = bundle_dir() / "Guide.md"
         md_text = readme_path.read_text(encoding="utf-8", errors="replace")
 
         body = markdown.markdown(
@@ -1183,7 +1183,7 @@ class MainWindow(QMainWindow):
         self.ignore_medley_checkbox.setToolTip(
             "UltraStar medley tags in the lyrics txt file, if they exist, are sometimes incorrect and can lead to a non-chorus sections being marked as choruses."
             "\n\nCheck this box if you wish to ignore the tags and fully rely on the backup chorus lookup methods instead.")
-        self.help_button.setToolTip("Show instructions on what this program does and how to use it.")
+        self.help_button.setToolTip("Show what this program does and instructions on how to use it.")
         self.refresh_button.setToolTip("Refresh the input song folders preview.")
         self.clear_cache_button.setToolTip("Delete the previously converted files from the selected input song's folder, base files won't be deleted.")
         self.stop_button.setToolTip("Stop the conversion process, all the files converted so far will be cached.")
@@ -1247,6 +1247,3 @@ def main():
     app.styleHints().colorSchemeChanged.connect(lambda scheme: apply_theme_change(scheme, app, window))
     window.show()
     sys.exit(app.exec())
-
-if __name__ == "__main__":
-    main()

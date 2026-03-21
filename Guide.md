@@ -1,5 +1,5 @@
 ## Let's Sing DLC Patcher
-<p>This tool helps you add custom songs to an installed DLC for Let's Sing (tested on 2022 and 2025). It converts UltraStar karaoke files (found on a well-known Spanish UltraStar site) to the Let's Sing DLC format.</p>
+<p>This tool helps you add custom songs to an installed DLC for Let's Sing (tested on 2022 and 2025, might not work on earlier versions). It converts UltraStar karaoke files (found on a well-known Spanish UltraStar site) to the Let's Sing DLC format.</p>
 
 ### How to use
 <ol>

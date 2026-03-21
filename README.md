@@ -19,7 +19,7 @@ required structure with minimal fiddling.
 
 UltraStar karaoke files lack proper standardization, so a simple desire to quickly add a couple of songs to the game quickly evolved into a fully fledged project.
 <br>Inspired by kosei’s automation script, and compelled by poor standardization, I extensively modified his
-scripts to streamline the conversion process as much as possible (and took some [Creative Liberties](#creative-liberties)).
+scripts to streamline the conversion process as much as possible (while taking some [Creative Liberties](#creative-liberties)).
 After successfully adding over 400 songs to Let’s Sing 2022 and realizing the shortcomings of this game version, I expanded support for other versions of the game as well.
 Newer versions of Let's Sing (2024+) feature a superior song selection menu designed for hundreds of tracks rather than just a few dozen and aren't so prone to crashing.
 To make the whole process even more user-friendly, I've implemented a GUI and packaged the tool as a standalone executable,
@@ -28,10 +28,12 @@ so you don't need to worry about installing Python or any dependencies.
 ## Requirements
 - Windows 7+
 - [ffmpeg](https://ffmpeg.org/download.html) - I used version [7.1.1-full_build from gyan.dev](https://www.gyan.dev/ffmpeg/builds/)
-- [RAD Video Tools](https://www.radgametools.com/bnkdown.htm) (**needed only for Let's Sing 2024+**) 
+- [RAD Video Tools](https://www.radgametools.com/bnkdown.htm) (**needed only for Let's Sing 2024+**)
 
-## Usage
-See [Help.md](Help.md) for detailed usage instructions.
+## How to use
+See the [Guide document](Guide.md) for a detailed step-by-step guide on how to use this tool and patch your DLC with custom songs.
+
+This tool can also be run from the command line, use the `--help` flag for a quick rundown of available options.
 
 ## Creative Liberties
 _Not mandatory reading:_
