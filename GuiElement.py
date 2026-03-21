@@ -25,7 +25,6 @@ class Icon(Enum):
     REFRESH = TablerIcons.load(OutlineIcon.REFRESH, color=Color.GREEN.value, stroke_width=2.5)
     FILE_X = TablerIcons.load(OutlineIcon.FILE_X, color=Color.RED.value, stroke_width=2.5)
     TRASH = TablerIcons.load(OutlineIcon.TRASH, color=Color.RED.value, stroke_width=2.5)
-    MICROPHONE = TablerIcons.load(OutlineIcon.MICROPHONE_2, color=Color.BLUE.value, stroke_width=2.5)
     ALERT_TRIANGLE = TablerIcons.load(OutlineIcon.ALERT_TRIANGLE, color=Color.ORANGE.value, stroke_width=2.5)
     INFO_SQUARE_ROUNDED = TablerIcons.load(OutlineIcon.INFO_SQUARE_ROUNDED, color=Color.BLUE.value, stroke_width=2.5)
 

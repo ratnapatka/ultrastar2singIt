@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ctypes
 import logging
 import os
 import re
@@ -109,8 +110,17 @@ def mark_field_valid(line_edit: QLineEdit, valid: bool) -> None:
     line_edit.style().polish(line_edit)
     line_edit.update()
 
-def apply_theme_change(theme, app) -> None:
-    if theme.name == 'Dark':
+def set_dark_title_bar(hwnd: int, dark: bool) -> None:
+    dwmwa_use_immersive_dark_mode = 20
+    value = ctypes.c_int(1 if dark else 0)
+    ctypes.windll.dwmapi.DwmSetWindowAttribute(
+        hwnd, dwmwa_use_immersive_dark_mode,
+        ctypes.byref(value), ctypes.sizeof(value)
+    )
+
+def apply_theme_change(theme, app, window=None) -> None:
+    is_dark = theme.name == 'Dark'
+    if is_dark:
         tooltip_style = """ QToolTip {
                 color: #ffffff;
                 background-color: #2d2d2d;
@@ -126,6 +136,9 @@ def apply_theme_change(theme, app) -> None:
             }"""
     current = app.styleSheet()
     app.setStyleSheet(current + tooltip_style)
+    if window is not None and sys.platform == 'win32':
+        hwnd = int(window.winId())
+        set_dark_title_bar(hwnd, is_dark)
 
 def make_legend_item(icon: QIcon, text: str) -> QWidget:
     """Small (icon + text) widget for the legend."""
@@ -160,7 +173,7 @@ class MainWindow(QMainWindow):
         self.int_validator = QRegularExpressionValidator('(^[0-9]+$|^$)')
 
         self.setWindowTitle("Let's Sing DLC Patcher")
-        self.setWindowIcon(GuiElement.Icon.MICROPHONE.get_icon())
+        self.setWindowIcon(QIcon(os.path.join(bundle_dir(), "assets", "logo.ico")))
         self.setGeometry(100, 100, 1400, 800)
         self.conversion_running = False
 
@@ -1229,9 +1242,9 @@ class MainWindow(QMainWindow):
 def main():
     app = QApplication(sys.argv)
     qdarktheme.setup_theme("auto")
-    apply_theme_change(app.styleHints().colorScheme(), app)
-    app.styleHints().colorSchemeChanged.connect(lambda scheme: apply_theme_change(scheme, app))
     window = MainWindow()
+    apply_theme_change(app.styleHints().colorScheme(), app, window)
+    app.styleHints().colorSchemeChanged.connect(lambda scheme: apply_theme_change(scheme, app, window))
     window.show()
     sys.exit(app.exec())
 
