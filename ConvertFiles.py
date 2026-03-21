@@ -1,3 +1,4 @@
+import csv
 import json
 import logging
 import os
@@ -8,7 +9,6 @@ import xml.etree.cElementTree as Et
 from pathlib import Path
 from xml.dom import minidom
 
-import pandas as pd
 import unicodedata
 from tqdm import tqdm
 
@@ -17,8 +17,8 @@ import UltrastarToSingit
 import data.repository.DlcRepository as repository
 from ConfigLoader import load_config
 
-XML_FORMAT = 'xml' # Let's Sing prior to 2024 (no DLC JSON name)
-JSON_FORMAT = 'json' # Let's Sing 2024+ (DLC JSON name present)
+XML_FORMAT = 'xml'
+JSON_FORMAT = 'json'
 
 SLOW = "slow"
 FAST = "fast"
@@ -429,46 +429,50 @@ def add_data_to_songsdlc_tsv(core_id, artist, name_id, title, year, cfg):
                               "\tGENRE_2000\tGENRE_RECENT\tGENRE_RANDOM_UNLOCKED"
                               "\tGENRE_VO\tGENRE_WOMEN\tGENRE_ENGLISH\tGENRE_MEN\n")
 
-    songs_xls = pd.read_csv(dest_songs_dlc, sep='\t', index_col=0)
-    if songs_xls.empty:
-        uid = 200
-        new_row = {
-            'UID': uid,
-            'ID': name_id,
-            'ARTIST': artist,
-            'TITLE': title,
-            'YEAR': int(year),
-            'DIFFICULTY': '0',
-            'SKU_INT': 'x',
-            'SKU_FR': 'x',
-            'SKU_SPA': 'x',
-            'SKU_GER': 'x',
-            'DLC_INDEX': '1',
-            'VIDEO_RATIO': 'RATIO_16_9',
-            'GENRE_RANDOM_UNLOCKED': 'x',
-            'GENRE_ENGLISH': 'x',
-        }
-        for col in songs_xls.columns:
-            if col not in new_row:
-                new_row[col] = ''
-        songs_xls.loc[0] = new_row
-        songs_xls.index = ['x']
-    else:
-        highest_current_uid = max(songs_xls['UID'].values)
-        uid = 200 if highest_current_uid < 200 else highest_current_uid + 1
-        new_row = len(songs_xls.index)
-        original_index = songs_xls.index.copy()
-        songs_xls.loc[new_row] = songs_xls.iloc[-1].copy()
-        songs_xls.loc[new_row, 'UID'] = uid
-        songs_xls.loc[new_row, 'ID'] = name_id
-        songs_xls.loc[new_row, 'ARTIST'] = artist
-        songs_xls.loc[new_row, 'TITLE'] = title
-        songs_xls.loc[new_row, 'YEAR'] = int(year)
-        new_index = list(original_index) + ['x']
-        songs_xls.index = new_index
+        with open(dest_songs_dlc, 'r', newline='') as f:
+            reader = csv.DictReader(f, delimiter='\t')
+            columns = list(reader.fieldnames)
+            rows = list(reader)
 
-    songs_xls.to_csv(dest_songs_dlc, sep='\t', index_label='ENABLED')
-    return uid
+        if not rows:
+            uid = 200
+            new_row = {col: '' for col in columns}  # fill all columns with ''
+            new_row['ENABLED'] = 'x'
+            new_row['UID'] = str(uid)
+            new_row['ID'] = name_id
+            new_row['ARTIST'] = artist
+            new_row['TITLE'] = title
+            new_row['YEAR'] = str(int(year))
+            new_row['DIFFICULTY'] = '0'
+            new_row['SKU_INT'] = 'x'
+            new_row['SKU_FR'] = 'x'
+            new_row['SKU_SPA'] = 'x'
+            new_row['SKU_GER'] = 'x'
+            new_row['DLC_INDEX'] = '1'
+            new_row['VIDEO_RATIO'] = 'RATIO_16_9'
+            new_row['GENRE_RANDOM_UNLOCKED'] = 'x'
+            new_row['GENRE_ENGLISH'] = 'x'
+            rows.append(new_row)
+        else:
+            highest_uid = max(int(r['UID']) for r in rows)
+            uid = 200 if highest_uid < 200 else highest_uid + 1
+
+            new_row = dict(rows[-1])
+            new_row['ENABLED'] = 'x'
+            new_row['UID'] = str(uid)
+            new_row['ID'] = name_id
+            new_row['ARTIST'] = artist
+            new_row['TITLE'] = title
+            new_row['YEAR'] = str(int(year))
+            rows.append(new_row)
+
+        with open(dest_songs_dlc, 'w', newline='') as f:
+            writer = csv.DictWriter(f, fieldnames=columns, delimiter='\t',
+                                    lineterminator='\n')
+            writer.writeheader()
+            writer.writerows(rows)
+
+        return uid
 
 
 def add_data_to_name_txt(dlc_id, name_id, output_format, dlc_json_name, cfg):

@@ -21,7 +21,6 @@ from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
                                QCheckBox, QTextEdit, QTableWidgetItem, QFileDialog, QGroupBox,
                                QGridLayout, QAbstractItemView,
                                QAbstractButton, QDialog, QTextBrowser, QDialogButtonBox, QComboBox)
-from numpy.f2py.auxfuncs import throw_error
 
 import GuiElement
 import data.repository.DlcRepository as repository
