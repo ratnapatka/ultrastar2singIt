@@ -10,7 +10,6 @@ from pathlib import Path
 from xml.dom import minidom
 
 import unicodedata
-from tqdm import tqdm
 
 import PitchAnalyzer
 import UltrastarToSingit
@@ -513,7 +512,7 @@ def convert_files(dirs_to_convert, cfg, stop_event=None):
 
     json_file_name = (dlc_json_name + '.json') if dlc_json_name else None
 
-    for dir_long_name in tqdm(dirs_to_convert, desc="Converting folders"):
+    for dir_long_name in dirs_to_convert:
         if stop_event and stop_event.is_set():
             logger.info("Conversion stopped by user.")
             break

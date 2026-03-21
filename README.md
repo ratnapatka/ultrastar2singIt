@@ -17,54 +17,21 @@ required structure with minimal fiddling.
  - Special thanks to [omnialord](https://github.com/omnialord) coming over from [gbatemp](https://gbatemp.net/members/omnia.573513/)
    for contributing to the project and keeping the dream alive.
 
-UltraStar karaoke files lack proper standardization, so what began as a fun idea quickly evolved into a fully fledged project.
-<br>Inspired by kosei’s post and automation script, and compelled by poor standardization, I extensively modified both
-scripts to streamline the conversion process (and took some [Creative Liberties](#creative-liberties)).
-After successfully adding over 400 songs to Let’s Sing 2022, I expanded support to the 2025 version,
-which features a superior song selection menu designed for hundreds of tracks rather than just a few dozen.
+UltraStar karaoke files lack proper standardization, so a simple desire to quickly add a couple of songs to the game quickly evolved into a fully fledged project.
+<br>Inspired by kosei’s automation script, and compelled by poor standardization, I extensively modified his
+scripts to streamline the conversion process as much as possible (and took some [Creative Liberties](#creative-liberties)).
+After successfully adding over 400 songs to Let’s Sing 2022 and realizing the shortcomings of this game version, I expanded support for other versions of the game as well.
+Newer versions of Let's Sing (2024+) feature a superior song selection menu designed for hundreds of tracks rather than just a few dozen and aren't so prone to crashing.
+To make the whole process even more user-friendly, I've implemented a GUI and packaged the tool as a standalone executable,
+so you don't need to worry about installing Python or any dependencies.
 
 ## Requirements
 - Windows 7+
-- Python 3.10.11 (what is legacy support?)
 - [ffmpeg](https://ffmpeg.org/download.html) - I used version [7.1.1-full_build from gyan.dev](https://www.gyan.dev/ffmpeg/builds/)
-  - [RAD Video Tools](https://www.radgametools.com/bnkdown.htm) (**needed only for Let's Sing 2025**) - install in default location **%ProgramFiles(x86)%\RADVideo** 
-                                                                   or change the path in the script
-- Python modules used: 
-  - pandas (2.2.3)
-  - tqdm (4.67.1)
-  - numpy (1.23.5) - low due to intel_tensorflow compatibility, higher version is possible with generic version of tensorflow
-  - BeautifulSoup4
-  - Levenshtein
-  - needed only for the slower (more accurate?) pitch correction:
-    - librosa (0.11.0)
-    - crepe (0.0.16)
-    - intel_tensorflow (2.91.1)
+- [RAD Video Tools](https://www.radgametools.com/bnkdown.htm) (**needed only for Let's Sing 2024+**) 
 
 ## Usage
-0. Install Let's Sing 2022 or 2025 to your console and install one DLC song pack, note your COREID and DLCID values.
-1. Make a working folder (I've named it "project") containing the **three Python scripts** and the **ffmpeg** release.
-To the same folder, copy all the UltraStar **song folders** you want to convert, this is what the folder should look like: 
-   <img width="927" height="540" alt="ProjectRoot/\n ├── ffmpeg/\n ├── Oasis - Wonderwall/\n ├── R.E.M. - Man on the Moon/\n ├── ConvertFiles.py\n ├── PitchAnalyzer.py\n └── UltrastarToSingit.py" src="https://github.com/user-attachments/assets/4628d2fc-d28d-45b5-9246-17814f5b368d" />
-2. (**optional**) If you wish to keep the songs included in the DLC instead of replacing them (also make sure you don't mix 
-   up your versions because they both use name.txt for their own purposes):
-   - for Let's Sing **2022**, copy the **name.txt** (found in DLCID\romfs) and **SongsDLC.tsv** 
-     (found in COREID\romfs\Data\StreamingAssets) files from the game installation to the project folder,
-   - for Let's Sing **2025**, copy the **songs_XX.json** (found in DLCID\romfs) file from the game installation to the project folder.
-3. Adjust the convertFiles.py script if needed, i.e. change the **COREID** and/or **DLCID** presets at the top to match
-   your installed Let's Sing ROM and DLC. These are set by default:
-   - for Let's Sing **2022**, COREID = 0100CC30149B8000, DLCID = 0100CC30149B9011
-   - for Let's Sing **2025**, DLC_JSON_NAME = songs_fr, DLCID = 01001C101ED11002
-4. Run the converter from the command line ('2025' is the default output type, 'fast' is the default pitch correction method, medley tags are prioritized for chorus detection and video files are preferred):
-```
-ConvertFiles.py [2022|2025] [fast|slow] [--no-medley] [--no-video]
-```
---no-medley and --no-video arguments are optional, the first one is used to skip ultrastar medley tags for chorus detection, the latter can be used if you have a slow computer or want to keep final size manageable and lightweight with hundreds of songs, it will skip music videos and always create static videos based on the cover image.
-5. Check the **error.log** file for any errors during conversion. The script will not stop in case of errors and will
-   skip to the next song. You can just rerun the script after any corrections in the files or script, the _Patch folder
-   will get deleted and any previously successfully converted files will just be copied over from the songs' folders
-   (they won't be encoded again).
-6. Copy the contents of the generated _Patch folder (COREID and/or DLCID folders) to your SD card **sd:/atmosphere/contents**.
-7. Run the game and sing!
+See [Help.md](Help.md) for detailed usage instructions.
 
 ## Creative Liberties
 _Not mandatory reading:_
@@ -75,23 +42,11 @@ _Not mandatory reading:_
    for these notes and only the timing matters. This is why the script considers all "F" notes to be "R" (rap) notes.
 2. Song previews (~30s soundbites) are automatically cut from the songs starting at 60 seconds into the song (where most medleys start)
    unless there are medley tags in the text file. 
-3. Many songs don't have videos, either because the uploader didn't put them, or the songs never had videos to begin with.
-   The script makes a static video from the provided cover art in these cases.
-4. Unless the video is a still image, the script will attempt to keep all video file sizes at 50 MB (same as the original
-   songs from the DLCs) to keep the size managable, but this causes the process to take longer due to bitrate calculation for each video.
-5. The RAD Video Tools aren't so rad if you ask me, they don't support flv, mkv or webm video formats (possibly more), 
-   nor do they support 4:4:4 chroma subsampling. In such cases the original video is first converted to mp4 via ffmpeg
-   before using RAD to convert to bk2 (taking almost twice as long). Note that, in most cases, RAD Tools will simply
-   close itself without a popup or error message when it encounters an unsupported format (preferable), but for some rare
-   songs (out of 500 songs I've converted, it only happens with Muse's Undisclosed Desires) the script will hang until you
-   OK the error message.
-6. Most songs have a lower pitch value (~10) than Let's Sing expects (~50). There are two ways of running the script to
-   mitigate this. By default, if the average pitch is under a certain level, the script adds a fixed value of 48 to all notes.
-   <br>If you want more precision, run the script with the 'slow' argument to perform sound analysis on each song
-   (~10 seconds), a difference in median pitch values between the txt and the song vocals will be added to all notes.
-7. Silence is added at the start of a song if it has a positive #VIDEOGAP tag in the text file (cropped if the gap is
-   negative) in order to sync the audio with the video and lyrics (seems accurate from my tests).
-8. Some songs are way quiter/louder than others, the script will use ffmpeg to normalize loudness.
+3. Some songs don't have videos, either because the uploader didn't put them, or the songs never had videos to begin with.
+   The script makes a static video from the provided cover art in these cases. 
+4. Silence is added at the start of a song if it has a positive #VIDEOGAP tag in the text file (cropped if the gap is
+   negative) in order to sync the audio with the video and lyrics. 
+5. Some songs are way quiter/louder than others, the script will use ffmpeg to normalize loudness.
 
 ## TODO (probably not by me)
 1. Some songs contain lyrics files for duets, these are currently ignored by the script.
