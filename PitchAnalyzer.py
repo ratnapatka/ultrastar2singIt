@@ -1,11 +1,16 @@
 import logging
 import math
-
 import statistics
+import sys
+
+from ConfigLoader import plugins_dir
 
 logger = logging.getLogger(__name__)
 
 def _slow_deps_available() -> bool:
+    plugins = plugins_dir()
+    if plugins.is_dir() and str(plugins) not in sys.path:
+        sys.path.insert(0, str(plugins))
     try:
         import numpy, librosa, crepe
         return True

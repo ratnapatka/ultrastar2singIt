@@ -4,6 +4,8 @@ from pathlib import Path
 from typing import Optional, Union
 from munch import Munch, munchify
 
+def plugins_dir() -> Path:
+    return app_dir() / "plugins"
 
 def bundle_dir() -> Path:
     if getattr(sys, '_MEIPASS', None):
@@ -31,12 +33,16 @@ def deep_override_config(default: dict, override: dict) -> dict:
             merged[key] = override_value
     return merged
 
+def load_default_config() -> Munch:
+    default_path = bundle_dir() / "config_default.yml"
+    with open(default_path, "r", encoding="utf-8") as f:
+        config_default = yaml.safe_load(f) or {}
+    return munchify(config_default)
+
 
 def load_config(base_dir: Optional[Union[str, Path]] = None) -> Munch:
-    # config_default.yml — bundled inside the exe (read-only)
     default_path = bundle_dir() / "config_default.yml"
 
-    # config.yml — user overrides, lives next to the exe (writable)
     if base_dir is not None:
         user_path = Path(base_dir) / "config.yml"
     else:

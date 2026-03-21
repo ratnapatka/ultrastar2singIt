@@ -1161,7 +1161,8 @@ class MainWindow(QMainWindow):
             "\n\nThe file is located in [DLC TITLEID]/romfs/songs_xx.json")
         self.pitch_correction_checkbox.setToolTip(
             "UltraStar files often have lower pitch values than Let's Sing expects so some form of pitch correction is required."
-            "\n\nIf left unchecked, quick maths will be employed for correcting the pitch.")
+            "\n\nCheck this box to use a pitch tracker based on a convolutional neural network (CREPE) to analyze each song (requires unpacking the required modules into the plugins folder). "
+            "\nIf left unchecked, quick maths will be employed for correcting the pitch instead.")
         self.still_video_checkbox.setToolTip("Check this box to skip encoding of music videos to the game's format, "
             "the cover image will be used to create a static video instead. This will dramatically speed up the conversion "
             "and reduce the final size of the patch.")

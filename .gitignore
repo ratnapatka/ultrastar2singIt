@@ -10,4 +10,6 @@ AGENTS.md
 
 !data/
 !data/**
+!plugins/
+!plugins/**
 **/__pycache__/

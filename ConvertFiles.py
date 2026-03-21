@@ -13,9 +13,9 @@ import unicodedata
 from tqdm import tqdm
 
 import PitchAnalyzer
-import UltrastarToSingit
+# import UltrastarToSingit
 import data.repository.DlcRepository as repository
-from ConfigLoader import load_config
+from ConfigLoader import load_config, load_default_config
 
 XML_FORMAT = 'xml'
 JSON_FORMAT = 'json'
@@ -473,6 +473,7 @@ def add_data_to_songsdlc_tsv(core_id, artist, name_id, title, year, cfg):
             writer.writerows(rows)
 
         return uid
+    return None
 
 
 def add_data_to_name_txt(dlc_id, name_id, output_format, dlc_json_name, cfg):
@@ -675,9 +676,12 @@ def main(cfg=None, stop_event=None):
     cfg = resolve_config(cfg)
 
     _init_paths(cfg)
-
     output_format = get_output_format(cfg)
-    pitch_method = str(cfg.conversion_tweaks.pitch_correction or FAST).lower()
+
+    if not bool(cfg.conversion_tweaks.enable):
+        cfg.conversion_tweaks = load_default_config().conversion_tweaks
+
+    pitch_method = str(cfg.conversion_tweaks.pitch_correction).lower()
     ignore_medley = bool(cfg.conversion_tweaks.no_medley)
     ignore_video = bool(cfg.conversion_tweaks.still_video)
 
