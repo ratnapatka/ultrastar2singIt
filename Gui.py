@@ -25,7 +25,7 @@ from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
 import GuiElement
 import data.repository.DlcRepository as repository
 from PreviewTable import PreviewTable
-from ConfigLoader import load_config
+from ConfigLoader import load_config, app_dir, bundle_dir
 
 JSON = "json"
 XML = "xml"
@@ -648,7 +648,7 @@ class MainWindow(QMainWindow):
         if not is_blank(self.cfg.tools.ffmpeg_path):
             self.ffmpeg_path.setText(self.cfg.tools.ffmpeg_path)
             return
-        root_path = os.path.abspath(os.path.dirname(__file__))
+        root_path = os.path.abspath(app_dir())
         if os.path.exists(os.path.join(root_path, "ffmpeg", "bin", "ffmpeg.exe")):
             self.ffmpeg_path.setText(os.path.join(root_path, "ffmpeg", "bin"))
             return
@@ -665,7 +665,7 @@ class MainWindow(QMainWindow):
             self.rad_path.setText(expected_path)
 
     def prefill_input_output_paths(self) -> None:
-        root_path = os.path.abspath(os.path.dirname(__file__))
+        root_path = os.path.abspath(app_dir())
         if not is_blank(self.cfg.folders.input):
             self.input_path.setText(self.cfg.folders.input)
             input_path = os.path.abspath(self.cfg.folders.input)
@@ -1055,7 +1055,7 @@ class MainWindow(QMainWindow):
         dlg.exec()
 
     def help_html(self) -> str:
-        readme_path = Path(__file__).resolve().parent / "Help.md"
+        readme_path = bundle_dir() / "Help.md"
         md_text = readme_path.read_text(encoding="utf-8", errors="replace")
 
         body = markdown.markdown(

@@ -2,9 +2,10 @@ import sqlite3
 import os
 from typing import Optional, List
 
+from ConfigLoader import bundle_dir
 from data.entity.DlcEntity import DlcEntity
 
-DB_PATH = os.path.join(os.path.dirname(__file__), "data.db")
+DB_PATH = os.path.join(bundle_dir(), "data", "repository", "data.db")
 
 def _get_connection() -> sqlite3.Connection:
     return sqlite3.connect(DB_PATH)
