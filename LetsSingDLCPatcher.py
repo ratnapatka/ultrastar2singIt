@@ -2,7 +2,7 @@ import sys
 
 
 def main():
-    if len(sys.argv) > 1:
+    if sys.stdout.isatty():
         _run_cli()
     else:
         _run_gui()

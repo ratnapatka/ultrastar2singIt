@@ -4,14 +4,13 @@ error.log
 *.json
 *.tsv
 *.txt
+*.spec
 */
 config.yml
 AGENTS.md
 
 !data/
 !data/**
-!plugins/
-!plugins/**
 !assets/
 !assets/**
 **/__pycache__/

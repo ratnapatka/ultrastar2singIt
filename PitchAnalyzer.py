@@ -14,7 +14,8 @@ def _slow_deps_available() -> bool:
     try:
         import numpy, librosa, crepe
         return True
-    except ImportError:
+    except ImportError as ie:
+        logger.error(f"Slow pitch correction dependencies not available: {ie}")
         return False
 
 _HAS_SLOW_DEPS = _slow_deps_available()

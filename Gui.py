@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import ctypes
 import logging
 import os
@@ -226,6 +224,7 @@ class MainWindow(QMainWindow):
         mark_field_valid(self.dlc_json_name_input, True)
         self.game_format = JSON if self.dlc_json_name_input.text() != '' else XML
         self.include_dlc_checkbox_refresh()
+        self.scan_input_folder()
         set_element_enabled(self.rad_label, True if self.game_format == JSON else False)
         set_element_enabled(self.rad_path, True if self.game_format == JSON else False)
         set_element_enabled(self.rad_browse, True if self.game_format == JSON else False)
@@ -662,8 +661,9 @@ class MainWindow(QMainWindow):
             self.ffmpeg_path.setText(self.cfg.tools.ffmpeg_path)
             return
         root_path = os.path.abspath(app_dir())
-        if os.path.exists(os.path.join(root_path, "ffmpeg", "bin", "ffmpeg.exe")):
-            self.ffmpeg_path.setText(os.path.join(root_path, "ffmpeg", "bin"))
+        ffpmeg_expected_path = os.path.join(root_path, "ffmpeg", "bin", "ffmpeg.exe")
+        if os.path.exists(ffpmeg_expected_path):
+            self.ffmpeg_path.setText(ffpmeg_expected_path)
             return
 
         common_install_location = r"C:\ffmpeg\bin\ffmpeg.exe"
@@ -713,7 +713,7 @@ class MainWindow(QMainWindow):
                     continue
 
                 name_id = construct_name_id_from_directory_name(directory)
-                if self.dlc_json_name_input is not None:
+                if not is_blank(self.dlc_json_name_input.text()):
                     output_video_name = name_id + '.bk2'
                     png_in_game_file_name = "yoyoyo"
                     png_long_file_name = "yoyoyo"
@@ -948,7 +948,6 @@ class MainWindow(QMainWindow):
 
         req(self.core_id_input, "Core ID")
         req(self.dlc_id_input, "DLC ID")
-        # req(self.dlc_json_name_input, "DLC JSON Name")
 
         req(self.ffmpeg_path, "FFmpeg")
         req(self.rad_path, "RAD Video Tools")
@@ -1031,6 +1030,8 @@ class MainWindow(QMainWindow):
         self.conversion_running = False
         self.set_controls_enabled(True)
         self.scan_input_folder()
+        self.log("Conversion finished successfully.")
+        logger.info("Conversion finished successfully.")
 
     def _on_conversion_error(self, error_msg: str) -> None:
         self.log(f"Conversion stopped due to error: {error_msg}")

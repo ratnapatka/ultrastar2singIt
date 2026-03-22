@@ -428,51 +428,50 @@ def add_data_to_songsdlc_tsv(core_id, artist, name_id, title, year, cfg):
                               "\tGENRE_2000\tGENRE_RECENT\tGENRE_RANDOM_UNLOCKED"
                               "\tGENRE_VO\tGENRE_WOMEN\tGENRE_ENGLISH\tGENRE_MEN\n")
 
-        with open(dest_songs_dlc, 'r', newline='') as f:
-            reader = csv.DictReader(f, delimiter='\t')
-            columns = list(reader.fieldnames)
-            rows = list(reader)
+    with open(dest_songs_dlc, 'r', newline='') as f:
+        reader = csv.DictReader(f, delimiter='\t')
+        columns = list(reader.fieldnames)
+        rows = list(reader)
 
-        if not rows:
-            uid = 200
-            new_row = {col: '' for col in columns}  # fill all columns with ''
-            new_row['ENABLED'] = 'x'
-            new_row['UID'] = str(uid)
-            new_row['ID'] = name_id
-            new_row['ARTIST'] = artist
-            new_row['TITLE'] = title
-            new_row['YEAR'] = str(int(year))
-            new_row['DIFFICULTY'] = '0'
-            new_row['SKU_INT'] = 'x'
-            new_row['SKU_FR'] = 'x'
-            new_row['SKU_SPA'] = 'x'
-            new_row['SKU_GER'] = 'x'
-            new_row['DLC_INDEX'] = '1'
-            new_row['VIDEO_RATIO'] = 'RATIO_16_9'
-            new_row['GENRE_RANDOM_UNLOCKED'] = 'x'
-            new_row['GENRE_ENGLISH'] = 'x'
-            rows.append(new_row)
-        else:
-            highest_uid = max(int(r['UID']) for r in rows)
-            uid = 200 if highest_uid < 200 else highest_uid + 1
+    if not rows:
+        uid = 200
+        new_row = {col: '' for col in columns}  # fill all columns with ''
+        new_row['ENABLED'] = 'x'
+        new_row['UID'] = str(uid)
+        new_row['ID'] = name_id
+        new_row['ARTIST'] = artist
+        new_row['TITLE'] = title
+        new_row['YEAR'] = str(int(year))
+        new_row['DIFFICULTY'] = '0'
+        new_row['SKU_INT'] = 'x'
+        new_row['SKU_FR'] = 'x'
+        new_row['SKU_SPA'] = 'x'
+        new_row['SKU_GER'] = 'x'
+        new_row['DLC_INDEX'] = '1'
+        new_row['VIDEO_RATIO'] = 'RATIO_16_9'
+        new_row['GENRE_RANDOM_UNLOCKED'] = 'x'
+        new_row['GENRE_ENGLISH'] = 'x'
+        rows.append(new_row)
+    else:
+        highest_uid = max(int(r['UID']) for r in rows)
+        uid = 200 if highest_uid < 200 else highest_uid + 1
 
-            new_row = dict(rows[-1])
-            new_row['ENABLED'] = 'x'
-            new_row['UID'] = str(uid)
-            new_row['ID'] = name_id
-            new_row['ARTIST'] = artist
-            new_row['TITLE'] = title
-            new_row['YEAR'] = str(int(year))
-            rows.append(new_row)
+        new_row = dict(rows[-1])
+        new_row['ENABLED'] = 'x'
+        new_row['UID'] = str(uid)
+        new_row['ID'] = name_id
+        new_row['ARTIST'] = artist
+        new_row['TITLE'] = title
+        new_row['YEAR'] = str(int(year))
+        rows.append(new_row)
 
-        with open(dest_songs_dlc, 'w', newline='') as f:
-            writer = csv.DictWriter(f, fieldnames=columns, delimiter='\t',
-                                    lineterminator='\n')
-            writer.writeheader()
-            writer.writerows(rows)
+    with open(dest_songs_dlc, 'w', newline='') as f:
+        writer = csv.DictWriter(f, fieldnames=columns, delimiter='\t',
+                                lineterminator='\n')
+        writer.writeheader()
+        writer.writerows(rows)
 
-        return uid
-    return None
+    return uid
 
 
 def add_data_to_name_txt(dlc_id, name_id, output_format, dlc_json_name, cfg):

@@ -5,7 +5,6 @@ from io import BytesIO
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QIcon, QPixmap, QPainter
-from PySide6.QtWidgets import QLabel
 from pytablericons import TablerIcons, OutlineIcon, FilledIcon
 
 ICON_SIZE = 16
