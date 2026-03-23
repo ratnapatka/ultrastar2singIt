@@ -19,10 +19,10 @@ def _run_cli():
     logging.basicConfig(level=logging.DEBUG, format='%(message)s')
 
     parser = argparse.ArgumentParser(
-        prog="LetsSingDLCPatcher",
+        prog="LetsSingUltrastarConverter",
         description="Convert UltraStar karaoke song folders into Let's Sing DLC format.",
         epilog="All options override values from config_default.yml / config.yml for this run only.\n"
-               "Example: LetsSingDLCPatcher --dlc-id 01001C101ED11002 --dlc-json-name songs_fr --still-video",
+               "Example: LetsSingUltrastarConverter --dlc-id 01001C101ED11002 --dlc-json-name songs_fr --still-video",
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
 
