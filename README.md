@@ -1,4 +1,4 @@
-# Let's Sing Ultrastar Converter
+# Let's Sing UltraStar Converter
 This tool helps you add custom songs to your Let's Sing 2022 or 2025 game. It converts UltraStar karaoke files
 (found on a well known Spanish UltraStar site) to the Let's Sing DLC format.
 The goal of this tool is full automation, it processes the song covers, audio, video, lyrics files, and generates the

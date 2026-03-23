@@ -1,4 +1,4 @@
-## Let's Sing Ultrastar Converter
+## Let's Sing UltraStar Converter
 <p>This tool helps you add custom songs to an installed DLC for Let's Sing (tested on 2022 and 2025, might not work on earlier versions). It converts UltraStar karaoke files (found on a well-known Spanish UltraStar site) to the Let's Sing DLC format.</p>
 
 ### How to use
@@ -27,7 +27,7 @@ My Songs/
     └── Scatman John - Scatman (Ski-Ba-Bop-Ba-Dop-Bop).txt
 ```
 </li>
-<li>Run the 'Let's Sing Ultrastar Converter' and fill in your game and dlc versions.<br>If your game/DLC versions aren't listed, choose 'other' and manually fill out the fields.
+<li>Run the 'Let's Sing UltraStar Converter' and fill in your game and dlc versions.<br>If your game/DLC versions aren't listed, choose 'other' and manually fill out the fields.
  If your base game is 2024 or newer, you will need to fill the 'DLC JSON Name' field as well. This name can be found in the name.txt file located in [DLC TITLEID]/romfs/name.txt,
  use DBI to browse the installed game folders.</li>
 <li>If FFmpeg or RAD Video Tools fields are empty, point them to the executables for FFmpeg and RAD Video Tools, respectively</li>

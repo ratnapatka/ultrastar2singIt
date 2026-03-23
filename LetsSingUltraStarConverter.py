@@ -2,7 +2,7 @@ import sys
 
 
 def main():
-    if sys.stdout.isatty():
+    if "--cli" in sys.argv or "-c" in sys.argv:
         _run_cli()
     else:
         _run_gui()
@@ -19,12 +19,15 @@ def _run_cli():
     logging.basicConfig(level=logging.DEBUG, format='%(message)s')
 
     parser = argparse.ArgumentParser(
-        prog="LetsSingUltrastarConverter",
+        prog="LetsSingUltraStarConverter",
         description="Convert UltraStar karaoke song folders into Let's Sing DLC format.",
         epilog="All options override values from config_default.yml / config.yml for this run only.\n"
-               "Example: LetsSingUltrastarConverter --dlc-id 01001C101ED11002 --dlc-json-name songs_fr --still-video",
+               "Example: LetsSingUltraStarConverter --dlc-id 01001C101ED11002 --dlc-json-name songs_fr --still-video",
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
+
+    cli = parser.add_argument_group('CLI options')
+    cli.add_argument('--cli', '-c', action='store_true', help='Run in command-line mode (suppress GUI)')
 
     # --- Game Info ---
     game = parser.add_argument_group('Game info')
@@ -48,7 +51,7 @@ def _run_cli():
     # --- Folders ---
     folders = parser.add_argument_group('Folders')
     folders.add_argument('--input', type=str, metavar='DIR',
-                         help='Input folder containing "Artist - Title" song directories from Ultrastar')
+                         help='Input folder containing "Artist - Title" song directories from UltraStar')
     folders.add_argument('--output', type=str, metavar='DIR',
                          help='Output folder for the generated patch (WARNING: folder is purged before each run)')
 

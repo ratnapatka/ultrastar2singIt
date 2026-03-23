@@ -170,7 +170,7 @@ class MainWindow(QMainWindow):
         """)
         self.int_validator = QRegularExpressionValidator('(^[0-9]+$|^$)')
 
-        self.setWindowTitle("Let's Sing Ultrastar Converter")
+        self.setWindowTitle("Let's Sing UltraStar Converter")
         self.setWindowIcon(QIcon(os.path.join(bundle_dir(), "assets", "logo.ico")))
         self.setGeometry(100, 100, 1400, 800)
         self.conversion_running = False
@@ -1049,7 +1049,7 @@ class MainWindow(QMainWindow):
 
     def show_help(self) -> None:
         dlg = QDialog(self)
-        dlg.setWindowTitle("HowTo – Let's Sing Ultrastar Converter")
+        dlg.setWindowTitle("HowTo – Let's Sing UltraStar Converter")
         dlg.setWindowIcon(GuiElement.Icon.INFO_SQUARE_ROUNDED.get_icon())
         dlg.setModal(True)
         dlg.resize(1200, 1000)
