@@ -1,21 +1,23 @@
 import io
 import json
+import logging
 import os
 import re
-import logging
 import xml.etree.cElementTree as ET
 from difflib import SequenceMatcher
-from xml.dom import minidom
 from pathlib import Path
+from xml.dom import minidom
 
 import chardet
 import requests
 import unicodedata
-from bs4 import BeautifulSoup
 from Levenshtein import distance as levenshtein_distance
+from bs4 import BeautifulSoup
 
-OLD = '2022'
-NEW = '2025'
+XML = 'xml'
+JSON = 'json'
+
+logger = logging.getLogger(__name__)
 
 GENIUS_HEADERS = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
@@ -31,7 +33,7 @@ replacements = {
 }
 
 def log_debug(msg):
-    print(f"[DEBUG] {msg}")
+    logger.debug(msg)
 
 def normalize_text(text):
     for old, new in replacements.items():
@@ -567,17 +569,17 @@ def write_metadata_file(us_data, songname):
 
 def write_vxla_file(sing_it, filename, directory, song_duration, output_type):
     root = ET.Element("AnnotationFile", version="3.0")
-    if output_type == NEW:
+    if output_type == JSON:
         doc = ET.SubElement(root, "IntervalLayer", datatype="STRING", name="segments")
         if "structure" in sing_it and sing_it["structure"]:
             write_intervals(sing_it["structure"], doc)
-    elif output_type == OLD:
+    elif output_type == XML:
         doc = ET.SubElement(root, "IntervalLayer", datatype="STRING", name="structure")
 
         ET.SubElement(doc, "Interval", t1="2.000", t2="3.000", value="couplet1")
         ET.SubElement(doc, "Interval", t1="3.000", t2="{0:.3f}".format(song_duration), value="refrain")
 
-    if output_type == OLD:
+    if output_type == XML:
         doc = ET.SubElement(root, "IntervalLayer", datatype="STRING", name="challenge")
         ET.SubElement(doc, "Interval", t1="0.000", t2="0.000", value="challenge")
     
@@ -588,7 +590,7 @@ def write_vxla_file(sing_it, filename, directory, song_duration, output_type):
     doc = ET.SubElement(root, "IntervalLayer", datatype="STRING", name="notes_full")
     write_intervals(sing_it["notes"], doc)
     
-    if output_type == NEW:
+    if output_type == JSON:
         doc = ET.SubElement(root, "IntervalLayer", datatype="STRING", name="language")
         ET.SubElement(doc, "Interval", t1="0.000", t2="{0:.3f}".format(song_duration), value="english")
 
@@ -600,7 +602,7 @@ def write_vxla_file(sing_it, filename, directory, song_duration, output_type):
     with open(os.path.join(directory, filename), "wb") as f:
         f.write(xmlstr.encode("Windows-1252", errors='xmlcharrefreplace'))
 
-def main(input_file_name, song_duration, pitch_corr=0, s='', directory='', output_type=NEW, ignore_medley=False):
+def main(input_file_name, song_duration, pitch_corr=0, s='', directory='', output_type=JSON, ignore_medley=False):
     us_data = parse_file(input_file_name)
     output_file = s if s else re.sub('[^A-Za-z0-9]+', '', us_data.get("TITLE", "Song"))
     

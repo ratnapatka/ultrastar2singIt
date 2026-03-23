@@ -1,3 +1,16 @@
 .idea
 error.log
+*.exe
+*.json
+*.tsv
+*.txt
+*.spec
 */
+config.yml
+AGENTS.md
+
+!data/
+!data/**
+!assets/
+!assets/**
+**/__pycache__/
