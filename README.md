@@ -52,18 +52,3 @@ _Not mandatory reading:_
 4. Silence is added at the start of a song if it has a positive #VIDEOGAP tag in the text file (cropped if the gap is
    negative) in order to sync the audio with the video and lyrics. 
 5. Some songs are way quiter/louder than others, the converter will use ffmpeg to normalize loudness.
-
-## TODO
-1. Some songs contain lyrics files for duets, these are currently ignored by the converter.
-2. Genres for songs are loaded from the #GENRE tag if the file contains it, otherwise it defaults to Pop. I dabbled with
-   the idea of pinging an external API (such as [genious](https://genius.com/)) to extract the genre, but I couldn't find a free option.
-3. All songs will have the lowest difficulty rating, this can probably be calculated from the song's length, BPM value,
-   number of lyrics, variations in pitch, etc.
-
-## Known issues
-1. Running the converter in CLI mode doesn't currently work.
-2. To keep the converter as light as possible, crepe and its dependencies (tensorflow, numpy, librosa...) aren't packaged in the executable.
-   If the user wants to use the more advanced pitch correction, they will have to provide these modules in the 'plugins' folder next to the converter.
-   A downloadable package will be provided to users at a later date to enable this feature.
-3. Logging should be improved to better inform the user. Errors aren't always logged to the error.log file and the converter can fail silently in some cases.
-4. (graphical) The header checkbox in the preview table is misaligned and cut-off on some screen resolutions.
