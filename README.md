@@ -6,17 +6,16 @@ The goal of this converter is full automation, it converts the provided song cov
 to the correct format and generates the required structure with minimal fiddling.
 
 ## Credits
- - Major props go to [dh4rry](https://github.com/dh4rry), the original creator of the ultrastar2singit.py script.
-   He made the script for Let's Sing 2019, but I see he's 
-   [still active and implementing a GUI for the tool](https://github.com/dh4rry/Ultrastar2singIt-Converter).
- - Many props go to MRJPGames over at gbatemp, he refined the original script, made it work for Let's Sing 2022 
-   and wrote a pretty good tutorial for getting the needed files from and onto your console in
-   [this thread](https://gbatemp.net/threads/add-custom-songs-to-lets-sing-2022-from-ultrastar.607817/).
- - Overwhelming props go to [kosei](https://gbatemp.net/members/kosei.626603/), also at gbatemp,
-   for writing a script to automate this whole process 
-   [in the same thread](https://gbatemp.net/threads/add-custom-songs-to-lets-sing-2022-from-ultrastar.607817/post-10037766).
- - Special thanks to [omnialord](https://github.com/omnialord) coming over from [gbatemp](https://gbatemp.net/members/omnia.573513/)
-   for contributing to the project and keeping the dream alive.
+ - Major props go to [dh4rry](https://github.com/dh4rry), the original creator of the ultrastar2singit.py script
+   used for replacing DLC songs for Let's Sing 2019. [Here](https://gbatemp.net/threads/add-your-own-songs-to-lets-sing-2019.538379/) is the link to the original post.
+ - Many props go to MRJPGames over at gbatemp in
+   [this thread](https://gbatemp.net/threads/add-custom-songs-to-lets-sing-2022-from-ultrastar.607817/) for writing a comprehensive
+   tutorial on how to prepare all the needed files for adding new songs instead of replacing them for Let's Sing 2022. 
+ - Overwhelming props go to [kosei](https://gbatemp.net/members/kosei.626603/), also at gbatemp, for writing a script to automate
+   this whole conversion process [in the same thread](https://gbatemp.net/threads/add-custom-songs-to-lets-sing-2022-from-ultrastar.607817/post-10037766).
+   Kosei's converter script was the jumping off point for my contributions.
+ - Special thanks to [omnialord](https://github.com/omnialord) also from [gbatemp](https://gbatemp.net/members/omnia.573513/)
+   for contributing to the project with bug fixes and fresh ideas, as well as for helping keep this game's modding scene alive.
 
 UltraStar karaoke files lack proper standardization, so a simple desire to quickly add a couple of songs to the game quickly evolved into a fully fledged project. 
 Inspired by kosei’s automation script, and compelled by poor standardization, I extensively modified his
