@@ -95,7 +95,16 @@ def init():
                 ('0100AAF018059002','Hits Francais et Internationaux','songs_fra','0100AAF018058000','2024'),
                 ('0100AAF018059001','Hits from Australia and NZ','songs_aus','0100AAF018058000','2024'),
                 ('0100AAF018059004','International Hits','songs_int','0100AAF018058000','2024'),
-                ('01001C101ED11002','French Hits','songs_fr','01001C101ED10000','2025'))
+                ('01001C101ED11001','Australia and New Zealand Hits','songs_aus','01001C101ED10000','2025'),
+                ('01001C101ED11002','French Hits','songs_fr','01001C101ED10000','2025'),
+                ('01001C101ED11003','German Hits','songs_ger','01001C101ED10000','2025'),
+                ('01001C101ED11004','International Hits','songs_int','01001C101ED10000','2025'),
+                ('01001C101ED11005','Spanish Hits','songs_spa','01001C101ED10000','2025'),
+                ('0100EE4020D19001','Australia and New Zealand Hits','songs_aus','0100EE4020D18000','2026'),
+                ('0100EE4020D19002','French Hits','songs_fr','0100EE4020D18000','2026'),
+                ('0100EE4020D19003','International Hits','songs_int','0100EE4020D18000','2026'),
+                ('0100EE4020D19004','Spanish Hits','songs_spa','0100EE4020D18000','2026'),
+                ('0100EE4020D19006','UK Hits','songs_uk','0100EE4020D18000','2026'))
             c.executemany("insert into dlc values (?,?,?,?,?)", data)
 
 def get_by_dlc_id(dlc_id: str) -> Optional[DlcEntity]:
