@@ -201,6 +201,8 @@ def map_data(us_data, song_duration, pitch_corr, input_file_name, ignore_medley=
                 
                 previous_line = note
             else:
+                final_lyric = "-"
+                
                 if " " in lyric_text and us_data['lyrics_map_list']:
                     if not us_data['lyrics_map_list'][-1]['lyrics'].endswith(" "):
                         us_data['lyrics_map_list'][-1]['lyrics'] += " "
