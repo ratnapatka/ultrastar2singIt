@@ -553,7 +553,7 @@ def convert_files(dirs_to_convert, cfg, stop_event=None, progress_callback=None)
     vxla_output_type = UltrastarToSingit.JSON if output_format == JSON_FORMAT else UltrastarToSingit.XML
 
     json_file_name = (dlc_json_name + '.json') if dlc_json_name else None
-    total = len(dirs_to_convert)
+    total_song_count = len(dirs_to_convert)
 
     for song_index, dir_long_name in enumerate(dirs_to_convert):
         if stop_event and stop_event.is_set():
@@ -562,7 +562,7 @@ def convert_files(dirs_to_convert, cfg, stop_event=None, progress_callback=None)
         try:
             if ' - ' not in dir_long_name:
                 if progress_callback:
-                    progress_callback(song_index + 1, total)
+                    progress_callback(song_index + 1, total_song_count)
                 continue
 
             name_id = construct_name_id_from_directory_name(dir_long_name)
@@ -680,7 +680,7 @@ def convert_files(dirs_to_convert, cfg, stop_event=None, progress_callback=None)
             if missing:
                 logger.error(f"Skipping '{dir_long_name}': missing converted files: {', '.join(missing)}")
                 if progress_callback:
-                    progress_callback(song_index + 1, total)
+                    progress_callback(song_index + 1, total_song_count)
                 continue
 
             # Handle name.txt
@@ -717,13 +717,13 @@ def convert_files(dirs_to_convert, cfg, stop_event=None, progress_callback=None)
                 shutil.copy2(os.fspath(list_in_dir / xml_file_name), os.path.join(base_dlc_dir, 'romfs'))
 
             if progress_callback:
-                progress_callback(song_index + 1, total)
+                progress_callback(song_index + 1, total_song_count)
 
         except Exception as e:
             logger.exception(f"Error with directory {dir_long_name}")
             logger.error(f"Error with directory {dir_long_name}: {e}")
             if progress_callback:
-                progress_callback(song_index + 1, total)
+                progress_callback(song_index + 1, total_song_count)
             continue
 
 

@@ -65,8 +65,8 @@ class ConversionWorker(QThread):
         self.cfg = cfg
         self.stop_event = stop_event
 
-    def _on_progress(self, current, total):
-        self.progress.emit(current, total)
+    def on_progress(self, current, total_song_count):
+        self.progress.emit(current, total_song_count)
 
     def run(self):
         try:
@@ -81,7 +81,7 @@ class ConversionWorker(QThread):
         logging.getLogger().addHandler(handler)
         try:
             ConvertFiles.main(self.cfg, stop_event=self.stop_event,
-                              progress_callback=self._on_progress)
+                              progress_callback=self.on_progress)
         except Exception as e:
             self.error.emit(str(e))
             return
@@ -180,24 +180,24 @@ class MainWindow(QMainWindow):
         self.setWindowIcon(QIcon(os.path.join(bundle_dir(), "assets", "logo.ico")))
         self.setGeometry(100, 100, 1400, 800)
         self.conversion_running = False
-        self._conversion_start_time = 0.0
-        self._estimated_finish_time = 0.0
-        self._progress_current = 0
-        self._progress_total = 0
+        self.conversion_start_time = 0.0
+        self.estimated_finish_time = 0.0
+        self.progress_current = 0
+        self.progress_total = 0
 
-        self._tick_timer = QTimer(self)
-        self._tick_timer.setInterval(1000)
-        self._tick_timer.timeout.connect(self._tick_progress)
+        self.tick_timer = QTimer(self)
+        self.tick_timer.setInterval(1000)
+        self.tick_timer.timeout.connect(self.tick_progress)
 
         self.folder_watcher = QFileSystemWatcher(self)
-        self.folder_watcher.directoryChanged.connect(self._schedule_watcher_refresh)
-        self.folder_watcher.fileChanged.connect(self._schedule_watcher_refresh)
+        self.folder_watcher.directoryChanged.connect(self.schedule_watcher_refresh)
+        self.folder_watcher.fileChanged.connect(self.schedule_watcher_refresh)
 
         # Debounce timer — coalesces rapid filesystem events into one refresh
-        self._watcher_debounce = QTimer(self)
-        self._watcher_debounce.setSingleShot(True)
-        self._watcher_debounce.setInterval(500)
-        self._watcher_debounce.timeout.connect(self._do_watcher_refresh)
+        self.watcher_debounce = QTimer(self)
+        self.watcher_debounce.setSingleShot(True)
+        self.watcher_debounce.setInterval(500)
+        self.watcher_debounce.timeout.connect(self.do_watcher_refresh)
 
         # Central widget with main layout
         central_widget = QWidget()
@@ -906,12 +906,10 @@ class MainWindow(QMainWindow):
         if to_add:
             self.folder_watcher.addPaths(to_add)
 
-    def _schedule_watcher_refresh(self) -> None:
-        """Restart the debounce timer — the actual refresh fires once events settle."""
-        self._watcher_debounce.start()
+    def schedule_watcher_refresh(self) -> None:
+        self.watcher_debounce.start()
 
-    def _do_watcher_refresh(self) -> None:
-        """Deferred handler that runs after filesystem events have settled."""
+    def do_watcher_refresh(self) -> None:
         if not self.isVisible():
             return
         self.sync_watched_folders(self.input_path.text())
@@ -1064,15 +1062,15 @@ class MainWindow(QMainWindow):
         self.save_config()
 
         # Reset progress bar
-        self._conversion_start_time = time.monotonic()
-        self._progress_current = 0
-        self._progress_total = 0
+        self.conversion_start_time = time.monotonic()
+        self.progress_current = 0
+        self.progress_total = 0
         self.progress_bar.setValue(0)
         self.progress_bar.setMaximum(1)
         self.progress_bar.setVisible(True)
         self.elapsed_label.setText("0:00")
         self.remaining_label.setText("")
-        self._tick_timer.start()
+        self.tick_timer.start()
 
         self.log("Saved config.")
         self.log("Starting conversion...")
@@ -1080,39 +1078,38 @@ class MainWindow(QMainWindow):
         self._stop_event = threading.Event()
         self._worker = ConversionWorker(self.cfg, self._stop_event)
         self._worker.log_message.connect(self.log)
-        self._worker.progress.connect(self._on_progress)
-        self._worker.finished.connect(self._on_conversion_finished)
-        self._worker.error.connect(self._on_conversion_error)
+        self._worker.progress.connect(self.on_progress)
+        self._worker.finished.connect(self.on_conversion_finished)
+        self._worker.error.connect(self.on_conversion_error)
         self._worker.start()
 
 
-    def _on_progress(self, current: int, total: int) -> None:
-        self._progress_current = current
-        self._progress_total = total
+    def on_progress(self, current: int, total: int) -> None:
+        self.progress_current = current
+        self.progress_total = total
         self.progress_bar.setMaximum(total)
         self.progress_bar.setValue(current)
 
         # Estimate the finish time based on average pace so far
         if current > 0:
-            elapsed = time.monotonic() - self._conversion_start_time
+            elapsed = time.monotonic() - self.conversion_start_time
             avg_per_song = elapsed / current
-            self._estimated_finish_time = self._conversion_start_time + avg_per_song * total
-        self._tick_progress()
+            self.estimated_finish_time = self.conversion_start_time + avg_per_song * total
+        self.tick_progress()
 
-    def _tick_progress(self) -> None:
-        """Called every second by the timer and on each progress update."""
+    def tick_progress(self) -> None:
         now = time.monotonic()
-        elapsed = now - self._conversion_start_time
-        self.elapsed_label.setText(self._format_duration(elapsed))
+        elapsed = now - self.conversion_start_time
+        self.elapsed_label.setText(self.format_duration(elapsed))
 
-        if self._progress_current > 0 and self._progress_current < self._progress_total:
-            remaining = max(0, self._estimated_finish_time - now)
-            self.remaining_label.setText(f"-{self._format_duration(remaining)}")
+        if self.progress_current > 0 and self.progress_current < self.progress_total:
+            remaining = max(0, self.estimated_finish_time - now)
+            self.remaining_label.setText(f"-{self.format_duration(remaining)}")
         else:
             self.remaining_label.setText("")
 
     @staticmethod
-    def _format_duration(seconds: float) -> str:
+    def format_duration(seconds: float) -> str:
         seconds = max(0, int(seconds))
         m, s = divmod(seconds, 60)
         h, m = divmod(m, 60)
@@ -1120,21 +1117,21 @@ class MainWindow(QMainWindow):
             return f"{h:d}:{m:02d}:{s:02d}"
         return f"{m:d}:{s:02d}"
 
-    def _on_conversion_finished(self) -> None:
-        self._tick_timer.stop()
+    def on_conversion_finished(self) -> None:
+        self.tick_timer.stop()
         self.conversion_running = False
         self.set_controls_enabled(True)
         self.scan_input_folder()
 
-        elapsed = time.monotonic() - self._conversion_start_time
-        self.elapsed_label.setText(self._format_duration(elapsed))
+        elapsed = time.monotonic() - self.conversion_start_time
+        self.elapsed_label.setText(self.format_duration(elapsed))
         self.remaining_label.setText("")
 
-        self.log(f"Conversion finished successfully in {self._format_duration(elapsed)}.")
+        self.log(f"Conversion finished successfully in {self.format_duration(elapsed)}.")
         logger.info("Conversion finished successfully.")
 
-    def _on_conversion_error(self, error_msg: str) -> None:
-        self._tick_timer.stop()
+    def on_conversion_error(self, error_msg: str) -> None:
+        self.tick_timer.stop()
         self.conversion_running = False
         self.set_controls_enabled(True)
         self.remaining_label.setText("")
