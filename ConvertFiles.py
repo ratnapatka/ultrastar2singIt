@@ -117,9 +117,26 @@ def rename_folders_physically():
         if old_name != new_name:
             try:
                 folder.rename(folder.parent / new_name)
+                rename_files_in_folder(folder, old_name, new_name)
                 logger.info(f"Folder renamed: '{old_name}' -> '{new_name}'")
             except Exception as e:
                 logger.error(f"Error while trying to rename {old_name}: {e}")
+
+
+def rename_files_in_folder(folder: Path, old_folder_name: str, new_folder_name: str):
+    for file in folder.iterdir():
+        if not file.is_file():
+            continue
+
+        if not old_folder_name == file.stem:
+            continue
+
+        new_file = file.with_name(new_folder_name + file.suffix)
+        try:
+            file.rename(new_file)
+            logger.info(f"  File renamed: '{file.name}' -> '{new_file.name}'")
+        except Exception as e:
+            logger.error(f"  Error renaming file {file.name}: {e}")
 
 
 def construct_name_id_from_directory_name(dir_long_name) -> str:
@@ -193,7 +210,9 @@ def create_still_video_from_cover_image(files_jpg, files_txt, list_in_dir, outpu
     logger.info('creating static video: ' + output_mp4_file_name)
     file = txt_data.get('COVER', None)
     if file:
-        file = os.path.join(os.path.dirname(os.fspath(files_txt[-1])), txt_data.get('COVER', None))
+        file = os.path.join(os.path.dirname(os.fspath(files_txt[-1])), file)
+        if not os.path.isfile(file):
+            file = files_jpg[0]
     else:
         file = files_jpg[0]
     target_size_mb = 10
@@ -497,6 +516,30 @@ def add_data_to_name_txt(dlc_id, name_id, output_format, dlc_json_name, cfg):
             outfile.write(name_id + '\n')
 
 
+def get_required_files(name_id: str, output_format: str, song_dir: Path) -> list:
+    files = [
+        song_dir / (name_id + '.ogg'),
+        song_dir / (name_id + '_preview.ogg'),
+        song_dir / (name_id + '.png'),
+        song_dir / (name_id + '.vxla')
+    ]
+    if output_format == XML_FORMAT:
+        files.append(song_dir / (name_id + '.mp4'))
+        files.append(song_dir / (name_id + '_InGameLoading.png'))
+        files.append(song_dir / (name_id + '_long.png'))
+    elif output_format == JSON_FORMAT:
+        files.append(song_dir / (name_id + '.bk2'))
+    return files
+
+
+def validate_converted_files(required: list) -> list:
+    missing = []
+    for file_path in required:
+        if not file_path.exists():
+            missing.append(f"{file_path.name}")
+    return missing
+
+
 def convert_files(dirs_to_convert, cfg, stop_event=None):
     dlc_id = str(cfg.dlc.id)
     core_id = str(cfg.core.id) if cfg.core.id else None
@@ -627,6 +670,13 @@ def convert_files(dirs_to_convert, cfg, stop_event=None):
             else:
                 pitch_corr = PitchAnalyzer.get_pitch_correction_suggestion_fast(txt_data, min_pitch=PITCH_MIN, max_pitch=PITCH_MAX)
             UltrastarToSingit.main(files_txt[-1], song_duration, pitch_corr, s=name_id, directory=list_in_dir, output_type=vxla_output_type, ignore_medley=ignore_medley)
+
+            # Validate that all required converted files were created successfully
+            required = get_required_files(name_id, output_format, list_in_dir)
+            missing = validate_converted_files(required)
+            if missing:
+                logger.error(f"Skipping '{dir_long_name}': missing converted files: {', '.join(missing)}")
+                continue
 
             # Handle name.txt
             add_data_to_name_txt(dlc_id, name_id, output_format, dlc_json_name, cfg)
