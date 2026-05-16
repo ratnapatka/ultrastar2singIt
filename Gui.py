@@ -181,6 +181,7 @@ class MainWindow(QMainWindow):
         self.setGeometry(100, 100, 1400, 800)
         self.conversion_running = False
         self._conversion_start_time = 0.0
+        self._estimated_finish_time = 0.0
         self._progress_current = 0
         self._progress_total = 0
 
@@ -1092,16 +1093,22 @@ class MainWindow(QMainWindow):
         self._progress_total = total
         self.progress_bar.setMaximum(total)
         self.progress_bar.setValue(current)
+
+        # Estimate the finish time based on average pace so far
+        if current > 0:
+            elapsed = time.monotonic() - self._conversion_start_time
+            avg_per_song = elapsed / current
+            self._estimated_finish_time = self._conversion_start_time + avg_per_song * total
         self._tick_progress()
 
     def _tick_progress(self) -> None:
         """Called every second by the timer and on each progress update."""
-        elapsed = time.monotonic() - self._conversion_start_time
+        now = time.monotonic()
+        elapsed = now - self._conversion_start_time
         self.elapsed_label.setText(self._format_duration(elapsed))
 
         if self._progress_current > 0 and self._progress_current < self._progress_total:
-            avg_per_song = elapsed / self._progress_current
-            remaining = avg_per_song * (self._progress_total - self._progress_current)
+            remaining = max(0, self._estimated_finish_time - now)
             self.remaining_label.setText(f"-{self._format_duration(remaining)}")
         else:
             self.remaining_label.setText("")
