@@ -116,8 +116,8 @@ def rename_folders_physically():
 
         if old_name != new_name:
             try:
-                folder.rename(folder.parent / new_name)
                 rename_files_in_folder(folder, old_name, new_name)
+                folder.rename(folder.parent / new_name)
                 logger.info(f"Folder renamed: '{old_name}' -> '{new_name}'")
             except Exception as e:
                 logger.error(f"Error while trying to rename {old_name}: {e}")
@@ -157,7 +157,7 @@ def strip_accents(s):
 def find_folders_to_convert():
     input_path = Path(_input_dir)
     dir_to_convert = [x.name for x in input_path.iterdir() if x.is_dir()]
-    dir_to_convert = [x for x in dir_to_convert if not x.startswith(('_', '.'))]
+    dir_to_convert = [x for x in dir_to_convert if not x.startswith(('_', '.')) and ' - ' in x]
     return dir_to_convert
 
 

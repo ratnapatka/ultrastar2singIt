@@ -14,7 +14,7 @@ import qdarktheme
 import unicodedata
 import yaml
 from PySide6 import QtCore
-from PySide6.QtCore import Qt, QDateTime, QFileSystemWatcher, QThread, Signal
+from PySide6.QtCore import Qt, QDateTime, QFileSystemWatcher, QThread, QTimer, Signal
 from PySide6.QtGui import QIcon, QRegularExpressionValidator
 from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
                                QHBoxLayout, QLabel, QLineEdit, QPushButton,
@@ -181,6 +181,12 @@ class MainWindow(QMainWindow):
         self.setGeometry(100, 100, 1400, 800)
         self.conversion_running = False
         self._conversion_start_time = 0.0
+        self._progress_current = 0
+        self._progress_total = 0
+
+        self._tick_timer = QTimer(self)
+        self._tick_timer.setInterval(1000)
+        self._tick_timer.timeout.connect(self._tick_progress)
 
         self.folder_watcher = QFileSystemWatcher(self)
         self.folder_watcher.directoryChanged.connect(self.refresh_preview_from_watcher)
@@ -1041,11 +1047,14 @@ class MainWindow(QMainWindow):
 
         # Reset progress bar
         self._conversion_start_time = time.monotonic()
+        self._progress_current = 0
+        self._progress_total = 0
         self.progress_bar.setValue(0)
         self.progress_bar.setMaximum(1)
         self.progress_bar.setVisible(True)
-        self.elapsed_label.setText("")
+        self.elapsed_label.setText("0:00")
         self.remaining_label.setText("")
+        self._tick_timer.start()
 
         self.log("Saved config.")
         self.log("Starting conversion...")
@@ -1060,15 +1069,20 @@ class MainWindow(QMainWindow):
 
 
     def _on_progress(self, current: int, total: int) -> None:
+        self._progress_current = current
+        self._progress_total = total
         self.progress_bar.setMaximum(total)
         self.progress_bar.setValue(current)
+        self._tick_progress()
 
+    def _tick_progress(self) -> None:
+        """Called every second by the timer and on each progress update."""
         elapsed = time.monotonic() - self._conversion_start_time
         self.elapsed_label.setText(self._format_duration(elapsed))
 
-        if current > 0:
-            avg_per_song = elapsed / current
-            remaining = avg_per_song * (total - current)
+        if self._progress_current > 0 and self._progress_current < self._progress_total:
+            avg_per_song = elapsed / self._progress_current
+            remaining = avg_per_song * (self._progress_total - self._progress_current)
             self.remaining_label.setText(f"-{self._format_duration(remaining)}")
         else:
             self.remaining_label.setText("")
@@ -1083,6 +1097,7 @@ class MainWindow(QMainWindow):
         return f"{m:d}:{s:02d}"
 
     def _on_conversion_finished(self) -> None:
+        self._tick_timer.stop()
         self.conversion_running = False
         self.set_controls_enabled(True)
         self.scan_input_folder()
@@ -1095,6 +1110,7 @@ class MainWindow(QMainWindow):
         logger.info("Conversion finished successfully.")
 
     def _on_conversion_error(self, error_msg: str) -> None:
+        self._tick_timer.stop()
         self.conversion_running = False
         self.set_controls_enabled(True)
         self.remaining_label.setText("")
