@@ -4,6 +4,7 @@ import os
 import re
 import sys
 import threading
+import time
 from html import escape
 from pathlib import Path
 from typing import List, Tuple
@@ -18,7 +19,7 @@ from PySide6.QtGui import QIcon, QRegularExpressionValidator
 from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
                                QHBoxLayout, QLabel, QLineEdit, QPushButton,
                                QCheckBox, QTextEdit, QTableWidgetItem, QFileDialog, QGroupBox,
-                               QGridLayout, QAbstractItemView,
+                               QGridLayout, QAbstractItemView, QProgressBar,
                                QAbstractButton, QDialog, QTextBrowser, QDialogButtonBox, QComboBox)
 
 import GuiElement
@@ -55,6 +56,7 @@ class QtLogHandler(logging.Handler):
 
 class ConversionWorker(QThread):
     log_message = Signal(str)
+    progress = Signal(int, int)  # (current, total)
     finished = Signal()
     error = Signal(str)
 
@@ -62,6 +64,9 @@ class ConversionWorker(QThread):
         super().__init__()
         self.cfg = cfg
         self.stop_event = stop_event
+
+    def _on_progress(self, current, total):
+        self.progress.emit(current, total)
 
     def run(self):
         try:
@@ -75,7 +80,8 @@ class ConversionWorker(QThread):
         handler.setFormatter(logging.Formatter('%(message)s'))
         logging.getLogger().addHandler(handler)
         try:
-            ConvertFiles.main(self.cfg, stop_event=self.stop_event)
+            ConvertFiles.main(self.cfg, stop_event=self.stop_event,
+                              progress_callback=self._on_progress)
         except Exception as e:
             self.error.emit(str(e))
             return
@@ -174,6 +180,7 @@ class MainWindow(QMainWindow):
         self.setWindowIcon(QIcon(os.path.join(bundle_dir(), "assets", "logo.ico")))
         self.setGeometry(100, 100, 1400, 800)
         self.conversion_running = False
+        self._conversion_start_time = 0.0
 
         self.folder_watcher = QFileSystemWatcher(self)
         self.folder_watcher.directoryChanged.connect(self.refresh_preview_from_watcher)
@@ -451,6 +458,23 @@ class MainWindow(QMainWindow):
 
         preview_layout.addWidget(self.preview_table)
         preview_layout.addWidget(self.build_preview_legend())
+
+        # Progress bar with elapsed / remaining time
+        progress_layout = QHBoxLayout()
+        self.elapsed_label = QLabel("")
+        self.elapsed_label.setStyleSheet("color: #888888;")
+        progress_layout.addWidget(self.elapsed_label)
+        self.progress_bar = QProgressBar()
+        self.progress_bar.setTextVisible(True)
+        self.progress_bar.setFormat("%v/%m  (%p%)")
+        self.progress_bar.setValue(0)
+        self.progress_bar.setFixedHeight(18)
+        self.progress_bar.setVisible(False)
+        progress_layout.addWidget(self.progress_bar, stretch=1)
+        self.remaining_label = QLabel("")
+        self.remaining_label.setStyleSheet("color: #888888;")
+        progress_layout.addWidget(self.remaining_label)
+        preview_layout.addLayout(progress_layout)
 
         # Preview buttons
         preview_buttons_layout = QHBoxLayout()
@@ -1015,25 +1039,65 @@ class MainWindow(QMainWindow):
         self.set_controls_enabled(False)
         self.save_config()
 
+        # Reset progress bar
+        self._conversion_start_time = time.monotonic()
+        self.progress_bar.setValue(0)
+        self.progress_bar.setMaximum(1)
+        self.progress_bar.setVisible(True)
+        self.elapsed_label.setText("")
+        self.remaining_label.setText("")
+
         self.log("Saved config.")
         self.log("Starting conversion...")
 
         self._stop_event = threading.Event()
         self._worker = ConversionWorker(self.cfg, self._stop_event)
         self._worker.log_message.connect(self.log)
+        self._worker.progress.connect(self._on_progress)
         self._worker.finished.connect(self._on_conversion_finished)
         self._worker.error.connect(self._on_conversion_error)
         self._worker.start()
 
 
+    def _on_progress(self, current: int, total: int) -> None:
+        self.progress_bar.setMaximum(total)
+        self.progress_bar.setValue(current)
+
+        elapsed = time.monotonic() - self._conversion_start_time
+        self.elapsed_label.setText(self._format_duration(elapsed))
+
+        if current > 0:
+            avg_per_song = elapsed / current
+            remaining = avg_per_song * (total - current)
+            self.remaining_label.setText(f"-{self._format_duration(remaining)}")
+        else:
+            self.remaining_label.setText("")
+
+    @staticmethod
+    def _format_duration(seconds: float) -> str:
+        seconds = max(0, int(seconds))
+        m, s = divmod(seconds, 60)
+        h, m = divmod(m, 60)
+        if h > 0:
+            return f"{h:d}:{m:02d}:{s:02d}"
+        return f"{m:d}:{s:02d}"
+
     def _on_conversion_finished(self) -> None:
         self.conversion_running = False
         self.set_controls_enabled(True)
         self.scan_input_folder()
-        self.log("Conversion finished successfully.")
+
+        elapsed = time.monotonic() - self._conversion_start_time
+        self.elapsed_label.setText(self._format_duration(elapsed))
+        self.remaining_label.setText("")
+
+        self.log(f"Conversion finished successfully in {self._format_duration(elapsed)}.")
         logger.info("Conversion finished successfully.")
 
     def _on_conversion_error(self, error_msg: str) -> None:
+        self.conversion_running = False
+        self.set_controls_enabled(True)
+        self.remaining_label.setText("")
         self.log(f"Conversion stopped due to error: {error_msg}")
         logger.error(f"Conversion failed: {error_msg}")
 
