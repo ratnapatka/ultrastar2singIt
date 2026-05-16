@@ -914,8 +914,6 @@ class MainWindow(QMainWindow):
         """Deferred handler that runs after filesystem events have settled."""
         if not self.isVisible():
             return
-        if self.conversion_running:
-            return  # suppress refreshes during conversion; finished handler rescans
         self.sync_watched_folders(self.input_path.text())
         self.scan_input_folder()
 
