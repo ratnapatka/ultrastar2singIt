@@ -189,8 +189,14 @@ class MainWindow(QMainWindow):
         self._tick_timer.timeout.connect(self._tick_progress)
 
         self.folder_watcher = QFileSystemWatcher(self)
-        self.folder_watcher.directoryChanged.connect(self.refresh_preview_from_watcher)
-        self.folder_watcher.fileChanged.connect(self.refresh_preview_from_watcher)
+        self.folder_watcher.directoryChanged.connect(self._schedule_watcher_refresh)
+        self.folder_watcher.fileChanged.connect(self._schedule_watcher_refresh)
+
+        # Debounce timer — coalesces rapid filesystem events into one refresh
+        self._watcher_debounce = QTimer(self)
+        self._watcher_debounce.setSingleShot(True)
+        self._watcher_debounce.setInterval(500)
+        self._watcher_debounce.timeout.connect(self._do_watcher_refresh)
 
         # Central widget with main layout
         central_widget = QWidget()
@@ -806,34 +812,40 @@ class MainWindow(QMainWindow):
             return
 
         # Populate preview table
-        self.preview_table.setRowCount(len(songs))
-        for row, song in enumerate(songs):
-            # Checkbox column (0)
-            checkbox_item = QTableWidgetItem()
-            checkbox_item.setFlags((checkbox_item.flags()
-                                    | Qt.ItemIsUserCheckable
-                                    | Qt.ItemIsEnabled
-                                    | Qt.ItemIsSelectable)
-                                   & ~Qt.ItemIsEditable)
-            checkbox_item.setCheckState(Qt.Unchecked)
-            checkbox_item.setTextAlignment(Qt.AlignCenter)
-            # Store deletion info on the checkbox item
-            checkbox_item.setData(Qt.UserRole, {"directory_path": song["directory_path"], "outputs": song["outputs"]})
-            self.preview_table.setItem(row, 0, checkbox_item)
+        self.preview_table.blockSignals(True)
+        try:
+            self.preview_table.setRowCount(len(songs))
+            for row, song in enumerate(songs):
+                # Checkbox column (0)
+                checkbox_item = QTableWidgetItem()
+                checkbox_item.setFlags((checkbox_item.flags()
+                                        | Qt.ItemIsUserCheckable
+                                        | Qt.ItemIsEnabled
+                                        | Qt.ItemIsSelectable)
+                                       & ~Qt.ItemIsEditable)
+                checkbox_item.setCheckState(Qt.Unchecked)
+                checkbox_item.setTextAlignment(Qt.AlignCenter)
+                # Store deletion info on the checkbox item
+                checkbox_item.setData(Qt.UserRole, {"directory_path": song["directory_path"], "outputs": song["outputs"]})
+                self.preview_table.setItem(row, 0, checkbox_item)
 
-            # Song name column (1)
-            song_item = QTableWidgetItem(song["directory"])
-            song_item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
-            song_item.setFlags(song_item.flags() & ~Qt.ItemIsEditable)
-            self.preview_table.setItem(row, 1, song_item)
+                # Song name column (1)
+                song_item = QTableWidgetItem(song["directory"])
+                song_item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+                song_item.setFlags(song_item.flags() & ~Qt.ItemIsEditable)
+                self.preview_table.setItem(row, 1, song_item)
 
-            # Icon columns (2..5)
-            for i, icon in enumerate(song["icons"], start=2):
-                icon_item = QTableWidgetItem()
-                icon_item.setIcon(icon)
-                icon_item.setTextAlignment(Qt.AlignCenter)
-                icon_item.setFlags(icon_item.flags() & ~Qt.ItemIsEditable)
-                self.preview_table.setItem(row, i, icon_item)
+                # Icon columns (2..5)
+                for i, icon in enumerate(song["icons"], start=2):
+                    icon_item = QTableWidgetItem()
+                    icon_item.setIcon(icon)
+                    icon_item.setTextAlignment(Qt.AlignCenter)
+                    icon_item.setFlags(icon_item.flags() & ~Qt.ItemIsEditable)
+                    self.preview_table.setItem(row, i, icon_item)
+        finally:
+            self.preview_table.blockSignals(False)
+            self.preview_table.sync_header_checkbox()
+            self.update_clear_cache_enabled()
 
     def browse_file(self, line_edit, file_filter="All Files (*)") -> None:
         """Open file browser and set the selected file path"""
@@ -893,9 +905,16 @@ class MainWindow(QMainWindow):
         if to_add:
             self.folder_watcher.addPaths(to_add)
 
-    def refresh_preview_from_watcher(self) -> None:
+    def _schedule_watcher_refresh(self) -> None:
+        """Restart the debounce timer — the actual refresh fires once events settle."""
+        self._watcher_debounce.start()
+
+    def _do_watcher_refresh(self) -> None:
+        """Deferred handler that runs after filesystem events have settled."""
         if not self.isVisible():
             return
+        if self.conversion_running:
+            return  # suppress refreshes during conversion; finished handler rescans
         self.sync_watched_folders(self.input_path.text())
         self.scan_input_folder()
 
