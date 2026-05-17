@@ -28,18 +28,32 @@ class Icon(Enum):
     INFO_SQUARE_ROUNDED = TablerIcons.load(OutlineIcon.INFO_SQUARE_ROUNDED, color=Color.BLUE.value, stroke_width=2.5)
 
     def get_icon(self: Icon) -> QIcon:
+        try:
+            return self._cached_icon
+        except AttributeError:
+            pass
         buffer = BytesIO()
         self.value.save(buffer, format='PNG')
         buffer.seek(0)
         pixmap = QPixmap()
         pixmap.loadFromData(buffer.read())
-        return QIcon(pixmap)
+        icon = QIcon(pixmap)
+        self._cached_icon = icon  # type: ignore[attr-defined]
+        return icon
+
+_combined_cache: dict[tuple, QIcon] = {}
 
 def combine_icons(icon1, icon2, size=ICON_SIZE):
+    key = (id(icon1), id(icon2), size)
+    cached = _combined_cache.get(key)
+    if cached is not None:
+        return cached
     pixmap = QPixmap(size * 2, size)
     pixmap.fill(Qt.transparent)
     painter = QPainter(pixmap)
     icon1.paint(painter, 0, 0, size, size)
     icon2.paint(painter, size, 0, size, size)
     painter.end()
-    return QIcon(pixmap)
+    icon = QIcon(pixmap)
+    _combined_cache[key] = icon
+    return icon

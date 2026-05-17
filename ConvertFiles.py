@@ -116,10 +116,27 @@ def rename_folders_physically():
 
         if old_name != new_name:
             try:
+                rename_files_in_folder(folder, old_name, new_name)
                 folder.rename(folder.parent / new_name)
                 logger.info(f"Folder renamed: '{old_name}' -> '{new_name}'")
             except Exception as e:
                 logger.error(f"Error while trying to rename {old_name}: {e}")
+
+
+def rename_files_in_folder(folder: Path, old_folder_name: str, new_folder_name: str):
+    for file in folder.iterdir():
+        if not file.is_file():
+            continue
+
+        if not old_folder_name == file.stem:
+            continue
+
+        new_file = file.with_name(new_folder_name + file.suffix)
+        try:
+            file.rename(new_file)
+            logger.info(f"  File renamed: '{file.name}' -> '{new_file.name}'")
+        except Exception as e:
+            logger.error(f"  Error renaming file {file.name}: {e}")
 
 
 def construct_name_id_from_directory_name(dir_long_name) -> str:
@@ -140,7 +157,7 @@ def strip_accents(s):
 def find_folders_to_convert():
     input_path = Path(_input_dir)
     dir_to_convert = [x.name for x in input_path.iterdir() if x.is_dir()]
-    dir_to_convert = [x for x in dir_to_convert if not x.startswith(('_', '.'))]
+    dir_to_convert = [x for x in dir_to_convert if not x.startswith(('_', '.')) and ' - ' in x]
     return dir_to_convert
 
 
@@ -193,7 +210,9 @@ def create_still_video_from_cover_image(files_jpg, files_txt, list_in_dir, outpu
     logger.info('creating static video: ' + output_mp4_file_name)
     file = txt_data.get('COVER', None)
     if file:
-        file = os.path.join(os.path.dirname(os.fspath(files_txt[-1])), txt_data.get('COVER', None))
+        file = os.path.join(os.path.dirname(os.fspath(files_txt[-1])), file)
+        if not os.path.isfile(file):
+            file = files_jpg[0]
     else:
         file = files_jpg[0]
     target_size_mb = 10
@@ -497,7 +516,31 @@ def add_data_to_name_txt(dlc_id, name_id, output_format, dlc_json_name, cfg):
             outfile.write(name_id + '\n')
 
 
-def convert_files(dirs_to_convert, cfg, stop_event=None):
+def get_required_files(name_id: str, output_format: str, song_dir: Path) -> list:
+    files = [
+        song_dir / (name_id + '.ogg'),
+        song_dir / (name_id + '_preview.ogg'),
+        song_dir / (name_id + '.png'),
+        song_dir / (name_id + '.vxla')
+    ]
+    if output_format == XML_FORMAT:
+        files.append(song_dir / (name_id + '.mp4'))
+        files.append(song_dir / (name_id + '_InGameLoading.png'))
+        files.append(song_dir / (name_id + '_long.png'))
+    elif output_format == JSON_FORMAT:
+        files.append(song_dir / (name_id + '.bk2'))
+    return files
+
+
+def validate_converted_files(required: list) -> list:
+    missing = []
+    for file_path in required:
+        if not file_path.exists():
+            missing.append(f"{file_path.name}")
+    return missing
+
+
+def convert_files(dirs_to_convert, cfg, stop_event=None, progress_callback=None):
     dlc_id = str(cfg.dlc.id)
     core_id = str(cfg.core.id) if cfg.core.id else None
     output_format = get_output_format(cfg)
@@ -510,13 +553,16 @@ def convert_files(dirs_to_convert, cfg, stop_event=None):
     vxla_output_type = UltrastarToSingit.JSON if output_format == JSON_FORMAT else UltrastarToSingit.XML
 
     json_file_name = (dlc_json_name + '.json') if dlc_json_name else None
+    total_song_count = len(dirs_to_convert)
 
-    for dir_long_name in dirs_to_convert:
+    for song_index, dir_long_name in enumerate(dirs_to_convert):
         if stop_event and stop_event.is_set():
             logger.info("Conversion stopped by user.")
             break
         try:
             if ' - ' not in dir_long_name:
+                if progress_callback:
+                    progress_callback(song_index + 1, total_song_count)
                 continue
 
             name_id = construct_name_id_from_directory_name(dir_long_name)
@@ -628,6 +674,15 @@ def convert_files(dirs_to_convert, cfg, stop_event=None):
                 pitch_corr = PitchAnalyzer.get_pitch_correction_suggestion_fast(txt_data, min_pitch=PITCH_MIN, max_pitch=PITCH_MAX)
             UltrastarToSingit.main(files_txt[-1], song_duration, pitch_corr, s=name_id, directory=list_in_dir, output_type=vxla_output_type, ignore_medley=ignore_medley)
 
+            # Validate that all required converted files were created successfully
+            required = get_required_files(name_id, output_format, list_in_dir)
+            missing = validate_converted_files(required)
+            if missing:
+                logger.error(f"Skipping '{dir_long_name}': missing converted files: {', '.join(missing)}")
+                if progress_callback:
+                    progress_callback(song_index + 1, total_song_count)
+                continue
+
             # Handle name.txt
             add_data_to_name_txt(dlc_id, name_id, output_format, dlc_json_name, cfg)
 
@@ -661,13 +716,18 @@ def convert_files(dirs_to_convert, cfg, stop_event=None):
                 shutil.copy2(os.fspath(list_in_dir / png_long_file_name), os.path.join(base_dlc_dir, 'romfs/Songs/covers_long'))
                 shutil.copy2(os.fspath(list_in_dir / xml_file_name), os.path.join(base_dlc_dir, 'romfs'))
 
+            if progress_callback:
+                progress_callback(song_index + 1, total_song_count)
+
         except Exception as e:
             logger.exception(f"Error with directory {dir_long_name}")
             logger.error(f"Error with directory {dir_long_name}: {e}")
+            if progress_callback:
+                progress_callback(song_index + 1, total_song_count)
             continue
 
 
-def main(cfg=None, stop_event=None):
+def main(cfg=None, stop_event=None, progress_callback=None):
 
     if cfg is None:
         cfg = load_config()
@@ -693,4 +753,4 @@ def main(cfg=None, stop_event=None):
         logger.info('MODE: Ignoring Medley tags (forcing Genius/Auto detection)')
     if ignore_video:
         logger.info('MODE: Ignoring original video (forcing still image video)')
-    convert_files(dirs_to_convert, cfg, stop_event=stop_event)
+    convert_files(dirs_to_convert, cfg, stop_event=stop_event, progress_callback=progress_callback)

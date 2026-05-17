@@ -36,10 +36,11 @@ class CheckBoxHeader(QHeaderView):
             return QRect()
 
         opt = QStyleOptionButton()
-        indicator = self.style().subElementRect(QStyle.SE_CheckBoxFocusRect, opt, self)
-        x = (w - indicator.width()) // 2 #TODO: figure out the x location calculation so the checkbox is centered
-        y = (h - indicator.height()) // 2
-        return QRect(5, y, indicator.width(), indicator.height())
+        indicator_size = self.style().pixelMetric(QStyle.PM_IndicatorWidth, opt, self)
+        indicator_height = self.style().pixelMetric(QStyle.PM_IndicatorHeight, opt, self)
+        x = (w - indicator_size) // 2
+        y = (h - indicator_height) // 2
+        return QRect(x, y, indicator_size, indicator_height)
 
     def paintSection(self, painter: QPainter, rect: QRect, logicalIndex: int) -> None:
         painter.save()
@@ -62,7 +63,7 @@ class CheckBoxHeader(QHeaderView):
         else:
             opt.state |= QStyle.State_Off
 
-        self.style().drawControl(QStyle.CE_CheckBox, opt, painter)
+        self.style().drawPrimitive(QStyle.PE_IndicatorCheckBox, opt, painter, self)
 
     def mousePressEvent(self, event) -> None:
         if event.button() == Qt.LeftButton and self.checkbox_rect().contains(event.pos()):

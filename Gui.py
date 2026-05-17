@@ -4,6 +4,7 @@ import os
 import re
 import sys
 import threading
+import time
 from html import escape
 from pathlib import Path
 from typing import List, Tuple
@@ -13,12 +14,12 @@ import qdarktheme
 import unicodedata
 import yaml
 from PySide6 import QtCore
-from PySide6.QtCore import Qt, QDateTime, QFileSystemWatcher, QThread, Signal
+from PySide6.QtCore import Qt, QDateTime, QFileSystemWatcher, QThread, QTimer, Signal
 from PySide6.QtGui import QIcon, QRegularExpressionValidator
 from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
                                QHBoxLayout, QLabel, QLineEdit, QPushButton,
                                QCheckBox, QTextEdit, QTableWidgetItem, QFileDialog, QGroupBox,
-                               QGridLayout, QAbstractItemView,
+                               QGridLayout, QAbstractItemView, QProgressBar,
                                QAbstractButton, QDialog, QTextBrowser, QDialogButtonBox, QComboBox)
 
 import GuiElement
@@ -55,6 +56,7 @@ class QtLogHandler(logging.Handler):
 
 class ConversionWorker(QThread):
     log_message = Signal(str)
+    progress = Signal(int, int)  # (current, total)
     finished = Signal()
     error = Signal(str)
 
@@ -62,6 +64,9 @@ class ConversionWorker(QThread):
         super().__init__()
         self.cfg = cfg
         self.stop_event = stop_event
+
+    def on_progress(self, current, total_song_count):
+        self.progress.emit(current, total_song_count)
 
     def run(self):
         try:
@@ -75,7 +80,8 @@ class ConversionWorker(QThread):
         handler.setFormatter(logging.Formatter('%(message)s'))
         logging.getLogger().addHandler(handler)
         try:
-            ConvertFiles.main(self.cfg, stop_event=self.stop_event)
+            ConvertFiles.main(self.cfg, stop_event=self.stop_event,
+                              progress_callback=self.on_progress)
         except Exception as e:
             self.error.emit(str(e))
             return
@@ -174,10 +180,24 @@ class MainWindow(QMainWindow):
         self.setWindowIcon(QIcon(os.path.join(bundle_dir(), "assets", "logo.ico")))
         self.setGeometry(100, 100, 1400, 800)
         self.conversion_running = False
+        self.conversion_start_time = 0.0
+        self.estimated_finish_time = 0.0
+        self.progress_current = 0
+        self.progress_total = 0
+
+        self.tick_timer = QTimer(self)
+        self.tick_timer.setInterval(1000)
+        self.tick_timer.timeout.connect(self.tick_progress)
 
         self.folder_watcher = QFileSystemWatcher(self)
-        self.folder_watcher.directoryChanged.connect(self.refresh_preview_from_watcher)
-        self.folder_watcher.fileChanged.connect(self.refresh_preview_from_watcher)
+        self.folder_watcher.directoryChanged.connect(self.schedule_watcher_refresh)
+        self.folder_watcher.fileChanged.connect(self.schedule_watcher_refresh)
+
+        # Debounce timer — coalesces rapid filesystem events into one refresh
+        self.watcher_debounce = QTimer(self)
+        self.watcher_debounce.setSingleShot(True)
+        self.watcher_debounce.setInterval(500)
+        self.watcher_debounce.timeout.connect(self.do_watcher_refresh)
 
         # Central widget with main layout
         central_widget = QWidget()
@@ -451,6 +471,23 @@ class MainWindow(QMainWindow):
 
         preview_layout.addWidget(self.preview_table)
         preview_layout.addWidget(self.build_preview_legend())
+
+        # Progress bar with elapsed / remaining time
+        progress_layout = QHBoxLayout()
+        self.elapsed_label = QLabel("")
+        self.elapsed_label.setStyleSheet("color: #888888;")
+        progress_layout.addWidget(self.elapsed_label)
+        self.progress_bar = QProgressBar()
+        self.progress_bar.setTextVisible(True)
+        self.progress_bar.setFormat("%v/%m  (%p%)")
+        self.progress_bar.setValue(0)
+        self.progress_bar.setFixedHeight(18)
+        self.progress_bar.setVisible(False)
+        progress_layout.addWidget(self.progress_bar, stretch=1)
+        self.remaining_label = QLabel("")
+        self.remaining_label.setStyleSheet("color: #888888;")
+        progress_layout.addWidget(self.remaining_label)
+        preview_layout.addLayout(progress_layout)
 
         # Preview buttons
         preview_buttons_layout = QHBoxLayout()
@@ -776,34 +813,40 @@ class MainWindow(QMainWindow):
             return
 
         # Populate preview table
-        self.preview_table.setRowCount(len(songs))
-        for row, song in enumerate(songs):
-            # Checkbox column (0)
-            checkbox_item = QTableWidgetItem()
-            checkbox_item.setFlags((checkbox_item.flags()
-                                    | Qt.ItemIsUserCheckable
-                                    | Qt.ItemIsEnabled
-                                    | Qt.ItemIsSelectable)
-                                   & ~Qt.ItemIsEditable)
-            checkbox_item.setCheckState(Qt.Unchecked)
-            checkbox_item.setTextAlignment(Qt.AlignCenter)
-            # Store deletion info on the checkbox item
-            checkbox_item.setData(Qt.UserRole, {"directory_path": song["directory_path"], "outputs": song["outputs"]})
-            self.preview_table.setItem(row, 0, checkbox_item)
+        self.preview_table.blockSignals(True)
+        try:
+            self.preview_table.setRowCount(len(songs))
+            for row, song in enumerate(songs):
+                # Checkbox column (0)
+                checkbox_item = QTableWidgetItem()
+                checkbox_item.setFlags((checkbox_item.flags()
+                                        | Qt.ItemIsUserCheckable
+                                        | Qt.ItemIsEnabled
+                                        | Qt.ItemIsSelectable)
+                                       & ~Qt.ItemIsEditable)
+                checkbox_item.setCheckState(Qt.Unchecked)
+                checkbox_item.setTextAlignment(Qt.AlignCenter)
+                # Store deletion info on the checkbox item
+                checkbox_item.setData(Qt.UserRole, {"directory_path": song["directory_path"], "outputs": song["outputs"]})
+                self.preview_table.setItem(row, 0, checkbox_item)
 
-            # Song name column (1)
-            song_item = QTableWidgetItem(song["directory"])
-            song_item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
-            song_item.setFlags(song_item.flags() & ~Qt.ItemIsEditable)
-            self.preview_table.setItem(row, 1, song_item)
+                # Song name column (1)
+                song_item = QTableWidgetItem(song["directory"])
+                song_item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+                song_item.setFlags(song_item.flags() & ~Qt.ItemIsEditable)
+                self.preview_table.setItem(row, 1, song_item)
 
-            # Icon columns (2..5)
-            for i, icon in enumerate(song["icons"], start=2):
-                icon_item = QTableWidgetItem()
-                icon_item.setIcon(icon)
-                icon_item.setTextAlignment(Qt.AlignCenter)
-                icon_item.setFlags(icon_item.flags() & ~Qt.ItemIsEditable)
-                self.preview_table.setItem(row, i, icon_item)
+                # Icon columns (2..5)
+                for i, icon in enumerate(song["icons"], start=2):
+                    icon_item = QTableWidgetItem()
+                    icon_item.setIcon(icon)
+                    icon_item.setTextAlignment(Qt.AlignCenter)
+                    icon_item.setFlags(icon_item.flags() & ~Qt.ItemIsEditable)
+                    self.preview_table.setItem(row, i, icon_item)
+        finally:
+            self.preview_table.blockSignals(False)
+            self.preview_table.sync_header_checkbox()
+            self.update_clear_cache_enabled()
 
     def browse_file(self, line_edit, file_filter="All Files (*)") -> None:
         """Open file browser and set the selected file path"""
@@ -863,7 +906,10 @@ class MainWindow(QMainWindow):
         if to_add:
             self.folder_watcher.addPaths(to_add)
 
-    def refresh_preview_from_watcher(self) -> None:
+    def schedule_watcher_refresh(self) -> None:
+        self.watcher_debounce.start()
+
+    def do_watcher_refresh(self) -> None:
         if not self.isVisible():
             return
         self.sync_watched_folders(self.input_path.text())
@@ -1015,25 +1061,80 @@ class MainWindow(QMainWindow):
         self.set_controls_enabled(False)
         self.save_config()
 
+        # Reset progress bar
+        self.conversion_start_time = time.monotonic()
+        self.progress_current = 0
+        self.progress_total = 0
+        self.progress_bar.setValue(0)
+        self.progress_bar.setMaximum(1)
+        self.progress_bar.setVisible(True)
+        self.elapsed_label.setText("0:00")
+        self.remaining_label.setText("")
+        self.tick_timer.start()
+
         self.log("Saved config.")
         self.log("Starting conversion...")
 
         self._stop_event = threading.Event()
         self._worker = ConversionWorker(self.cfg, self._stop_event)
         self._worker.log_message.connect(self.log)
-        self._worker.finished.connect(self._on_conversion_finished)
-        self._worker.error.connect(self._on_conversion_error)
+        self._worker.progress.connect(self.on_progress)
+        self._worker.finished.connect(self.on_conversion_finished)
+        self._worker.error.connect(self.on_conversion_error)
         self._worker.start()
 
 
-    def _on_conversion_finished(self) -> None:
+    def on_progress(self, current: int, total: int) -> None:
+        self.progress_current = current
+        self.progress_total = total
+        self.progress_bar.setMaximum(total)
+        self.progress_bar.setValue(current)
+
+        # Estimate the finish time based on average pace so far
+        if current > 0:
+            elapsed = time.monotonic() - self.conversion_start_time
+            avg_per_song = elapsed / current
+            self.estimated_finish_time = self.conversion_start_time + avg_per_song * total
+        self.tick_progress()
+
+    def tick_progress(self) -> None:
+        now = time.monotonic()
+        elapsed = now - self.conversion_start_time
+        self.elapsed_label.setText(self.format_duration(elapsed))
+
+        if self.progress_current > 0 and self.progress_current < self.progress_total:
+            remaining = max(0, self.estimated_finish_time - now)
+            self.remaining_label.setText(f"-{self.format_duration(remaining)}")
+        else:
+            self.remaining_label.setText("")
+
+    @staticmethod
+    def format_duration(seconds: float) -> str:
+        seconds = max(0, int(seconds))
+        m, s = divmod(seconds, 60)
+        h, m = divmod(m, 60)
+        if h > 0:
+            return f"{h:d}:{m:02d}:{s:02d}"
+        return f"{m:d}:{s:02d}"
+
+    def on_conversion_finished(self) -> None:
+        self.tick_timer.stop()
         self.conversion_running = False
         self.set_controls_enabled(True)
         self.scan_input_folder()
-        self.log("Conversion finished successfully.")
+
+        elapsed = time.monotonic() - self.conversion_start_time
+        self.elapsed_label.setText(self.format_duration(elapsed))
+        self.remaining_label.setText("")
+
+        self.log(f"Conversion finished successfully in {self.format_duration(elapsed)}.")
         logger.info("Conversion finished successfully.")
 
-    def _on_conversion_error(self, error_msg: str) -> None:
+    def on_conversion_error(self, error_msg: str) -> None:
+        self.tick_timer.stop()
+        self.conversion_running = False
+        self.set_controls_enabled(True)
+        self.remaining_label.setText("")
         self.log(f"Conversion stopped due to error: {error_msg}")
         logger.error(f"Conversion failed: {error_msg}")
 
