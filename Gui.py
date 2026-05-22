@@ -26,6 +26,7 @@ import GuiElement
 import data.repository.DlcRepository as repository
 from PreviewTable import PreviewTable
 from ConfigLoader import load_config, app_dir, bundle_dir
+from version import __version__
 
 JSON = "json"
 XML = "xml"
@@ -176,7 +177,7 @@ class MainWindow(QMainWindow):
         """)
         self.int_validator = QRegularExpressionValidator('(^[0-9]+$|^$)')
 
-        self.setWindowTitle("Let's Sing UltraStar Converter")
+        self.setWindowTitle(f"Let's Sing UltraStar Converter v{__version__}")
         self.setWindowIcon(QIcon(os.path.join(bundle_dir(), "assets", "logo.ico")))
         self.setGeometry(100, 100, 1400, 800)
         self.conversion_running = False
