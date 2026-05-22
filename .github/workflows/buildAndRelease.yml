@@ -28,7 +28,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install pyinstaller pyside6 qdarktheme munch pyyaml chardet requests beautifulsoup4 python-Levenshtein pytablericons markdown
+          pip install pyinstaller pyside6 PyQtDarkTheme munch pyyaml chardet requests beautifulsoup4 Levenshtein pytablericons markdown
 
       - name: Bump version
         id: bump
