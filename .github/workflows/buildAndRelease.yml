@@ -1,0 +1,82 @@
+name: Build & Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: "Version bump type"
+        required: true
+        default: "patch"
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install pyinstaller pyside6 qdarktheme munch pyyaml chardet requests beautifulsoup4 python-Levenshtein pytablericons markdown
+
+      - name: Bump version
+        id: bump
+        shell: python
+        run: |
+          import re, os
+
+          bump_type = "${{ inputs.bump }}"
+          version_file = "version.py"
+
+          text = open(version_file, encoding="utf-8").read()
+          match = re.search(r'__version__\s*=\s*"(\d+)\.(\d+)\.(\d+)"', text)
+          major, minor, patch = int(match.group(1)), int(match.group(2)), int(match.group(3))
+
+          if bump_type == "major":
+              major += 1; minor = 0; patch = 0
+          elif bump_type == "minor":
+              minor += 1; patch = 0
+          else:
+              patch += 1
+
+          new_version = f"{major}.{minor}.{patch}"
+          new_text = re.sub(r'__version__\s*=\s*".*?"', f'__version__ = "{new_version}"', text)
+          open(version_file, "w", encoding="utf-8").write(new_text)
+
+          with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+              f.write(f"version={new_version}\n")
+
+          print(f"Bumped to {new_version}")
+
+      - name: Commit version bump
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add version.py
+          git commit -m "Bump version to v${{ steps.bump.outputs.version }}"
+          git push
+
+      - name: Build executable
+        run: |
+          pyinstaller "Lets Sing Ultrastar Converter.spec" --noconfirm
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.bump.outputs.version }}
+          name: v${{ steps.bump.outputs.version }}
+          generate_release_notes: true
+          files: |
+            dist/Let's Sing Ultrastar Converter.exe
+
