@@ -83,7 +83,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ steps.bump.outputs.version }}
-          name: ${{ inputs.title || format('v{0}', steps.bump.outputs.version) }}
+          name: v${{ steps.bump.outputs.version }}${{ inputs.title && format(' - {0}', inputs.title) || '' }}
           body: ${{ inputs.description }}
           generate_release_notes: ${{ !inputs.description }}
           files: |
