@@ -78,5 +78,5 @@ jobs:
           name: v${{ steps.bump.outputs.version }}
           generate_release_notes: true
           files: |
-            dist/Let's Sing Ultrastar Converter.exe
+            dist/Lets Sing Ultrastar Converter.exe
 
