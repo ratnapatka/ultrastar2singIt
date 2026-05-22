@@ -12,6 +12,14 @@ on:
           - patch
           - minor
           - major
+      title:
+        description: "Release title"
+        required: false
+        type: string
+      description:
+        description: "Release description"
+        required: false
+        type: string
 
 permissions:
   contents: write
@@ -75,8 +83,8 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ steps.bump.outputs.version }}
-          name: v${{ steps.bump.outputs.version }}
-          generate_release_notes: true
+          name: ${{ inputs.title || format('v{0}', steps.bump.outputs.version) }}
+          body: ${{ inputs.description }}
+          generate_release_notes: ${{ !inputs.description }}
           files: |
             dist/Lets Sing Ultrastar Converter.exe
-
