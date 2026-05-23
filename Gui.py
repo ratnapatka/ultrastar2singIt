@@ -23,6 +23,7 @@ from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
                                QAbstractButton, QDialog, QTextBrowser, QDialogButtonBox, QComboBox)
 
 import GuiElement
+import SupportedFormats
 import data.repository.DlcRepository as repository
 from PreviewTable import PreviewTable
 from ConfigLoader import load_config, app_dir, bundle_dir
@@ -32,11 +33,6 @@ JSON = "json"
 XML = "xml"
 
 BROWSE = "Browse"
-
-VIDEO_EXTENSIONS = ('.mp4', '.mpeg', '.avi', '.divx', '.mkv', '.webm')
-AUDIO_EXTENSIONS = ('.mp3', '.ogg', '.aac', '.wav', '.flac')
-IMAGE_EXTENSIONS = ('.jpg', '.jpeg', '.png', '.bmp')
-TXT_EXTENSIONS = '.txt'
 
 DEFAULT_INPUT_FOLDER_NAME = "My Songs"
 DEFAULT_OUTPUT_FOLDER_NAME = "_Patch"
@@ -734,6 +730,15 @@ class MainWindow(QMainWindow):
         self.sync_watched_folders(input_path)
         self.refresh_preview()
 
+    def sanitize_name(self, name):
+        name = re.sub(r'\[.*?\]', '', name)
+        name = ''.join(c for c in unicodedata.normalize('NFD', name)
+                       if unicodedata.category(c) != 'Mn')
+        name = name.replace('...', '')
+        name = name.replace('…', '')
+        name = re.sub(r"[!?#$%'\"\u2018\u2019\u00B4`\u201C\u201D()\[\]]", '', name)
+        return ' '.join(name.split()).strip()
+
     def scan_input_folder(self) -> None:
         """Scan input folder for song directories and populate preview table"""
         input_path = os.path.normpath(self.input_path.text().strip())
@@ -774,15 +779,15 @@ class MainWindow(QMainWindow):
                 all_files = os.listdir(directory_path)
                 for file in all_files:
                     file_lower = file.lower()
-                    if directory != Path(file).stem:
+                    if directory != Path(file).stem and directory != self.sanitize_name(Path(file).stem):
                         continue
-                    if file_lower.endswith(VIDEO_EXTENSIONS):
+                    if file_lower.endswith(SupportedFormats.VIDEO_EXTENSIONS):
                         has_video = GuiElement.Icon.CHECK.get_icon()
-                    elif file_lower.endswith(AUDIO_EXTENSIONS):
+                    elif file_lower.endswith(SupportedFormats.AUDIO_EXTENSIONS):
                         has_audio = GuiElement.Icon.CHECK.get_icon()
-                    elif file_lower.endswith(IMAGE_EXTENSIONS):
+                    elif file_lower.endswith(SupportedFormats.IMAGE_EXTENSIONS):
                         has_image = GuiElement.Icon.CHECK.get_icon()
-                    elif file_lower.endswith(TXT_EXTENSIONS):
+                    elif file_lower.endswith(SupportedFormats.TXT_EXTENSIONS):
                         has_txt = GuiElement.Icon.CHECK.get_icon()
 
                 cached_video = output_video_name in all_files
