@@ -12,6 +12,7 @@ from xml.dom import minidom
 import unicodedata
 
 import PitchAnalyzer
+import SupportedFormats
 import UltrastarToSingit
 import data.repository.DlcRepository as repository
 from ConfigLoader import load_config, load_default_config
@@ -94,6 +95,7 @@ def _is_blank(value) -> bool:
 
 
 def sanitize_name(name):
+    name = re.sub(r'\[.*?\]', '', name)
     name = ''.join(c for c in unicodedata.normalize('NFD', name)
                   if unicodedata.category(c) != 'Mn')
     name = name.replace('...', '')
@@ -116,27 +118,10 @@ def rename_folders_physically():
 
         if old_name != new_name:
             try:
-                rename_files_in_folder(folder, old_name, new_name)
                 folder.rename(folder.parent / new_name)
                 logger.info(f"Folder renamed: '{old_name}' -> '{new_name}'")
             except Exception as e:
                 logger.error(f"Error while trying to rename {old_name}: {e}")
-
-
-def rename_files_in_folder(folder: Path, old_folder_name: str, new_folder_name: str):
-    for file in folder.iterdir():
-        if not file.is_file():
-            continue
-
-        if not old_folder_name == file.stem:
-            continue
-
-        new_file = file.with_name(new_folder_name + file.suffix)
-        try:
-            file.rename(new_file)
-            logger.info(f"  File renamed: '{file.name}' -> '{new_file.name}'")
-        except Exception as e:
-            logger.error(f"  Error renaming file {file.name}: {e}")
 
 
 def construct_name_id_from_directory_name(dir_long_name) -> str:
@@ -570,10 +555,10 @@ def convert_files(dirs_to_convert, cfg, stop_event=None, progress_callback=None)
 
             list_in_dir = Path(_input_dir) / dir_long_name
             files_all = [os.fspath(x.name) for x in list_in_dir.iterdir()]
-            files_txt = [x for x in list_in_dir.iterdir() if x.suffix.lower() == '.txt']
-            files_avi = [x for x in list_in_dir.iterdir() if x.suffix.lower() in ('.avi', '.divx', '.mp4', '.flv', '.mkv', '.webm')]
-            files_mp3 = [x for x in list_in_dir.iterdir() if x.suffix.lower() in ('.mp3', '.ogg', '.wav', '.flac', '.aac', '.m4a', '.opus')]
-            files_jpg = [x for x in list_in_dir.iterdir() if x.suffix.lower() in ('.jpg', '.jpeg', '.png')]
+            files_txt = [x for x in list_in_dir.iterdir() if x.suffix.lower() == SupportedFormats.TXT_EXTENSIONS]
+            files_avi = [x for x in list_in_dir.iterdir() if x.suffix.lower() in SupportedFormats.VIDEO_EXTENSIONS]
+            files_mp3 = [x for x in list_in_dir.iterdir() if x.suffix.lower() in SupportedFormats.AUDIO_EXTENSIONS]
+            files_jpg = [x for x in list_in_dir.iterdir() if x.suffix.lower() in SupportedFormats.IMAGE_EXTENSIONS]
 
             output_video_file_name = name_id + '.mp4' if output_format == XML_FORMAT else name_id + '.bk2'
             png_file_name = name_id + '.png'
