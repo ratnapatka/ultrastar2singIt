@@ -10,12 +10,11 @@ from xml.dom import minidom
 
 import chardet
 import requests
-import unicodedata
 from Levenshtein import distance as levenshtein_distance
 from bs4 import BeautifulSoup
 
-XML = 'xml'
-JSON = 'json'
+import StringUtils
+import SupportedFormats
 
 logger = logging.getLogger(__name__)
 
@@ -23,33 +22,8 @@ GENIUS_HEADERS = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
 }
 
-replacements = {
-    "’": "'", "‘": "'", "‚": "'", "‹": "'", "›": "'", "`": "'",
-    '“': '"', '”': '"', "„": '"', "«": '"', "»": '"',
-    "œ": "oe", "Œ": "OE", "æ": "ae", "Æ": "AE",
-    "ﬁ": "fi", "ﬂ": "fl",
-    "–": "-", "—": "-", "−": "-",
-    "…": "..."
-}
-
 def log_debug(msg):
     logger.debug(msg)
-
-def normalize_text(text):
-    for old, new in replacements.items():
-        text = text.replace(old, new)
-    return ''.join(c for c in unicodedata.normalize('NFD', text)
-                   if unicodedata.category(c) != 'Mn')
-
-# handle special characters and feats for genius url
-def normalize_for_url(text):
-    text = text.strip().lower()
-    text = text.replace(' with ', ' and ').replace(' feat ', ' and ').replace(' ft ', ' and ').replace(' & ', ' and ')
-    text = re.sub(r'[_:@\\\/\s]', '-', text)
-    text = re.sub(r'[^\w-]', '', text)
-    text = re.sub(r'-+', '-', text)
-    text = text.strip('-')
-    return text
 
 def detect_encoding(filename):
     with open(filename, 'rb') as f:
@@ -169,7 +143,7 @@ def map_data(us_data, song_duration, pitch_corr, input_file_name, ignore_medley=
         if note[0] in [':', '*', 'F', 'R', 'G']:
             start = float(note[1]) * 60 / bpm / 4 + gap + video_gap
             end = start + float(note[2]) * 60 / bpm / 4
-            lyric_text = normalize_text(note[4])
+            lyric_text = StringUtils.normalize_text(note[4])
             
             if lyric_text.strip() != "~": # if the lyric is just a tilde, don't add it to on-screen lyrics
                 final_lyric = lyric_text.replace('~', '') # tildes in the middle of bottom lyrics are ugly
@@ -319,12 +293,12 @@ def genius_search_for_correct_path(artist, title):
                         for hit in section.get('hits', []):
                             result = hit['result']
                             
-                            hit_title = normalize_text(result['title']).lower()
-                            hit_artist = normalize_text(result['primary_artist']['name']).lower()
+                            hit_title = StringUtils.normalize_text(result['title']).lower()
+                            hit_artist = StringUtils.normalize_text(result['primary_artist']['name']).lower()
                             
-                            target_title = normalize_text(clean_title).lower()
-                            target_artist_full = normalize_text(artist).lower()
-                            target_artist_clean = normalize_text(primary_artist).lower()
+                            target_title = StringUtils.normalize_text(clean_title).lower()
+                            target_artist_full = StringUtils.normalize_text(artist).lower()
+                            target_artist_clean = StringUtils.normalize_text(primary_artist).lower()
 
                             # Validate name match with search results
                             
@@ -380,13 +354,13 @@ def genius_get_choruses(input_file_name, artist=None, title=None, use_cache=True
 
     urls_to_try = []
     
-    url_artist_full = normalize_for_url(artist)
-    url_title = normalize_for_url(title)
+    url_artist_full = StringUtils.normalize_for_url(artist)
+    url_title = StringUtils.normalize_for_url(title)
     urls_to_try.append(f'https://genius.com/{url_artist_full}-{url_title}-lyrics')
     
     primary_artist = clean_artist_name(artist)
     if primary_artist != artist.lower():
-        url_artist_clean = normalize_for_url(primary_artist)
+        url_artist_clean = StringUtils.normalize_for_url(primary_artist)
         urls_to_try.append(f'https://genius.com/{url_artist_clean}-{url_title}-lyrics')
 
     urls_to_try = list(dict.fromkeys(urls_to_try))
@@ -571,17 +545,17 @@ def write_metadata_file(us_data, songname):
 
 def write_vxla_file(sing_it, filename, directory, song_duration, output_type):
     root = ET.Element("AnnotationFile", version="3.0")
-    if output_type == JSON:
+    if output_type == SupportedFormats.JSON:
         doc = ET.SubElement(root, "IntervalLayer", datatype="STRING", name="segments")
         if "structure" in sing_it and sing_it["structure"]:
             write_intervals(sing_it["structure"], doc)
-    elif output_type == XML:
+    elif output_type == SupportedFormats.XML:
         doc = ET.SubElement(root, "IntervalLayer", datatype="STRING", name="structure")
 
         ET.SubElement(doc, "Interval", t1="2.000", t2="3.000", value="couplet1")
         ET.SubElement(doc, "Interval", t1="3.000", t2="{0:.3f}".format(song_duration), value="refrain")
 
-    if output_type == XML:
+    if output_type == SupportedFormats.XML:
         doc = ET.SubElement(root, "IntervalLayer", datatype="STRING", name="challenge")
         ET.SubElement(doc, "Interval", t1="0.000", t2="0.000", value="challenge")
     
@@ -592,7 +566,7 @@ def write_vxla_file(sing_it, filename, directory, song_duration, output_type):
     doc = ET.SubElement(root, "IntervalLayer", datatype="STRING", name="notes_full")
     write_intervals(sing_it["notes"], doc)
     
-    if output_type == JSON:
+    if output_type == SupportedFormats.JSON:
         doc = ET.SubElement(root, "IntervalLayer", datatype="STRING", name="language")
         ET.SubElement(doc, "Interval", t1="0.000", t2="{0:.3f}".format(song_duration), value="english")
 
@@ -604,7 +578,7 @@ def write_vxla_file(sing_it, filename, directory, song_duration, output_type):
     with open(os.path.join(directory, filename), "wb") as f:
         f.write(xmlstr.encode("Windows-1252", errors='xmlcharrefreplace'))
 
-def main(input_file_name, song_duration, pitch_corr=0, s='', directory='', output_type=JSON, ignore_medley=False):
+def main(input_file_name, song_duration, pitch_corr=0, s='', directory='', output_type=SupportedFormats.JSON, ignore_medley=False):
     us_data = parse_file(input_file_name)
     output_file = s if s else re.sub('[^A-Za-z0-9]+', '', us_data.get("TITLE", "Song"))
     

@@ -12,13 +12,11 @@ from xml.dom import minidom
 import unicodedata
 
 import PitchAnalyzer
+import StringUtils
 import SupportedFormats
 import UltrastarToSingit
 import data.repository.DlcRepository as repository
 from ConfigLoader import load_config, load_default_config
-
-XML_FORMAT = 'xml'
-JSON_FORMAT = 'json'
 
 SLOW = "slow"
 FAST = "fast"
@@ -31,7 +29,6 @@ NAME_TXT_FILE = 'name.txt'
 
 MUSIC_GENRE_LIST = ['Pop', 'Rap', 'Rock', 'Ballad', 'Electro']
 
-# File handler — always active, captures ERROR+ to error.log
 _file_handler = logging.FileHandler('error.log', mode='a')
 _file_handler.setLevel(logging.ERROR)
 _file_handler.setFormatter(logging.Formatter('%(asctime)s %(levelname)s: %(message)s'))
@@ -86,22 +83,11 @@ def resolve_config(cfg):
 
 
 def get_output_format(cfg) -> str:
-    """JSON_FORMAT when dlc.json_name is set, else XML_FORMAT."""
-    return JSON_FORMAT if cfg.dlc.json_name else XML_FORMAT
+    return SupportedFormats.JSON if cfg.dlc.json_name else SupportedFormats.XML
 
 
 def _is_blank(value) -> bool:
     return not (value and not str(value).isspace())
-
-
-def sanitize_name(name):
-    name = re.sub(r'\[.*?\]', '', name)
-    name = ''.join(c for c in unicodedata.normalize('NFD', name)
-                  if unicodedata.category(c) != 'Mn')
-    name = name.replace('...', '')
-    name = name.replace('…', '')
-    name = re.sub(r"[!?#$%'\"\u2018\u2019\u00B4`\u201C\u201D()\[\]]", '', name)
-    return ' '.join(name.split()).strip()
 
 
 def rename_folders_physically():
@@ -114,7 +100,7 @@ def rename_folders_physically():
         if old_name.startswith(('_', '.')):
             continue
 
-        new_name = sanitize_name(old_name)
+        new_name = StringUtils.sanitize_name(old_name)
 
         if old_name != new_name:
             try:
@@ -347,10 +333,10 @@ def handle_xml_or_json(dlc_id, core_id, json_file_name, list_in_dir, txt_data,
     year = txt_data.get('YEAR', '2000')
     genre = match_genre(txt_data)
 
-    if output_format == XML_FORMAT:
+    if output_format == SupportedFormats.XML:
         uid = add_data_to_songsdlc_tsv(core_id, artist, name_id, title, year, cfg)
         create_meta_xml(uid, artist, genre, list_in_dir, name_id, title, xml_file_name, year)
-    elif output_format == JSON_FORMAT:
+    elif output_format == SupportedFormats.JSON:
         song_data = {
             "id": name_id,
             "artist": artist,
@@ -490,13 +476,13 @@ def add_data_to_name_txt(dlc_id, name_id, output_format, dlc_json_name, cfg):
         if include_dlc and source_name_txt and os.path.exists(source_name_txt):
             shutil.copy2(source_name_txt, dest_name_txt)
         else:
-            if output_format == XML_FORMAT:
+            if output_format == SupportedFormats.XML:
                 open(dest_name_txt, 'w').close()
-            elif output_format == JSON_FORMAT:
+            elif output_format == SupportedFormats.JSON:
                 with open(dest_name_txt, 'w') as outfile:
                     outfile.write(dlc_json_name + '\n')
     # Append song ID for XML format
-    if output_format == XML_FORMAT:
+    if output_format == SupportedFormats.XML:
         with open(dest_name_txt, 'a') as outfile:
             outfile.write(name_id + '\n')
 
@@ -508,11 +494,11 @@ def get_required_files(name_id: str, output_format: str, song_dir: Path) -> list
         song_dir / (name_id + '.png'),
         song_dir / (name_id + '.vxla')
     ]
-    if output_format == XML_FORMAT:
+    if output_format == SupportedFormats.XML:
         files.append(song_dir / (name_id + '.mp4'))
         files.append(song_dir / (name_id + '_InGameLoading.png'))
         files.append(song_dir / (name_id + '_long.png'))
-    elif output_format == JSON_FORMAT:
+    elif output_format == SupportedFormats.JSON:
         files.append(song_dir / (name_id + '.bk2'))
     return files
 
@@ -535,7 +521,7 @@ def convert_files(dirs_to_convert, cfg, stop_event=None, progress_callback=None)
     ignore_medley = bool(cfg.conversion_tweaks.no_medley)
     ignore_video = bool(cfg.conversion_tweaks.still_video)
     # Map output_format to UltrastarToSingit OLD/NEW constants
-    vxla_output_type = UltrastarToSingit.JSON if output_format == JSON_FORMAT else UltrastarToSingit.XML
+    vxla_output_type = UltrastarToSingit.JSON if output_format == SupportedFormats.JSON else UltrastarToSingit.XML
 
     json_file_name = (dlc_json_name + '.json') if dlc_json_name else None
     total_song_count = len(dirs_to_convert)
@@ -560,7 +546,7 @@ def convert_files(dirs_to_convert, cfg, stop_event=None, progress_callback=None)
             files_mp3 = [x for x in list_in_dir.iterdir() if x.suffix.lower() in SupportedFormats.AUDIO_EXTENSIONS]
             files_jpg = [x for x in list_in_dir.iterdir() if x.suffix.lower() in SupportedFormats.IMAGE_EXTENSIONS]
 
-            output_video_file_name = name_id + '.mp4' if output_format == XML_FORMAT else name_id + '.bk2'
+            output_video_file_name = name_id + '.mp4' if output_format == SupportedFormats.XML else name_id + '.bk2'
             png_file_name = name_id + '.png'
             png_in_game_file_name = name_id + '_InGameLoading.png'
             png_long_file_name = name_id + '_long.png'
@@ -592,11 +578,11 @@ def convert_files(dirs_to_convert, cfg, stop_event=None, progress_callback=None)
                 target_bitrate_kbps = int((original_size_mb * 8192) / duration)
 
                 if output_video_file_name not in files_all:
-                    if output_format == XML_FORMAT:
+                    if output_format == SupportedFormats.XML:
                         if original_size_mb > target_size_mb:
                             target_bitrate_kbps = int((target_size_mb * 8192) / duration)
                         create_video(file, list_in_dir, output_video_file_name, target_bitrate_kbps)
-                    elif output_format == JSON_FORMAT:
+                    elif output_format == SupportedFormats.JSON:
                         if is_video_still_image(file):
                             quality = 0.1
                         else:
@@ -644,10 +630,10 @@ def convert_files(dirs_to_convert, cfg, stop_event=None, progress_callback=None)
                 else:
                     logger.info(f"Static video already exists, skipping generation: {output_video_file_name_mp4}")
 
-                if output_format == JSON_FORMAT:
+                if output_format == SupportedFormats.JSON:
                     if not os.path.exists(list_in_dir / output_video_file_name):
                         create_video_bink(os.fspath(list_in_dir / output_video_file_name_mp4), list_in_dir, output_video_file_name, None, quality=0.1)
-                elif output_format == XML_FORMAT:
+                elif output_format == SupportedFormats.XML:
                     if ignore_video or not os.path.exists(list_in_dir / output_video_file_name):
                         shutil.copy2(list_in_dir / output_video_file_name_mp4, list_in_dir / output_video_file_name)
 
@@ -690,7 +676,7 @@ def convert_files(dirs_to_convert, cfg, stop_event=None, progress_callback=None)
             shutil.copy2(os.fspath(list_in_dir / vxla_file_name), os.path.join(base_dlc_dir, 'romfs/Songs/vxla'))
             shutil.copy2(os.fspath(list_in_dir / output_video_file_name), os.path.join(base_dlc_dir, 'romfs/Songs/videos'))
 
-            if output_format == XML_FORMAT:
+            if output_format == SupportedFormats.XML:
                 os.makedirs(os.path.join(base_dlc_dir, 'romfs/Songs/backgrounds/InGameLoading'), exist_ok=True)
                 os.makedirs(os.path.join(base_dlc_dir, 'romfs/Songs/backgrounds/Result'), exist_ok=True)
                 os.makedirs(os.path.join(base_dlc_dir, 'romfs/Songs/covers_duet'), exist_ok=True)
