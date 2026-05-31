@@ -100,9 +100,9 @@ class PreviewTable(QTableWidget):
         self.verticalHeader().setDefaultSectionSize(22)
         self.verticalHeader().setSectionResizeMode(QHeaderView.Fixed)
         self.setEditTriggers(QAbstractItemView.NoEditTriggers)
-        self.setColumnCount(6)
+        self.setColumnCount(7)
         self.setHorizontalHeaderLabels(
-            ["", "Song", "Video", "Audio", "Image", "Lyrics"])
+            ["", "Song", "Video", "Audio", "ImageC", "ImageB", "Lyrics"])
         self.horizontalHeader().setFixedHeight(24)
         self.horizontalHeader().setMinimumSectionSize(10)
         self.horizontalHeader().setSectionResizeMode(0, QHeaderView.Fixed)
@@ -110,7 +110,7 @@ class PreviewTable(QTableWidget):
         self.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
         for i in range(2, self.columnCount()):
             self.horizontalHeader().setSectionResizeMode(i, QHeaderView.Fixed)
-            self.setColumnWidth(i, 40)
+            self.setColumnWidth(i, 50)
 
     def selected_rows(self) -> list[int]:
         sm = self.selectionModel()

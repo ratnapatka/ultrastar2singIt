@@ -10,8 +10,6 @@ from xml.dom import minidom
 
 import chardet
 import requests
-from Levenshtein import distance as levenshtein_distance
-from bs4 import BeautifulSoup
 
 import StringUtils
 import SupportedFormats
@@ -323,6 +321,8 @@ def genius_search_for_correct_path(artist, title):
     return None
 
 def genius_get_choruses(input_file_name, artist=None, title=None, use_cache=True):
+    from bs4 import BeautifulSoup
+
     input_path = Path(input_file_name)
     cache_file = input_path.parent / f"{input_path.stem}_genius_cache.json"
 
@@ -462,6 +462,8 @@ def recover_repeats_from_txt(lyrics_map_list, matched_choruses):
     return new_matches
 
 def match_choruses_to_beats(lyrics_map_list, genius_choruses, similarity_threshold=0.7):
+    from Levenshtein import distance as levenshtein_distance
+
     matched_choruses = []
     used_ranges = []
     

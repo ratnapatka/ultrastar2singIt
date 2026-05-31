@@ -24,6 +24,7 @@ from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
 
 import GuiElement
 import SupportedFormats
+import UltrastarToSingit
 import data.repository.DlcRepository as repository
 from PreviewTable import PreviewTable
 from ConfigLoader import load_config, app_dir, bundle_dir
@@ -185,6 +186,8 @@ class MainWindow(QMainWindow):
         self.tick_timer = QTimer(self)
         self.tick_timer.setInterval(1000)
         self.tick_timer.timeout.connect(self.tick_progress)
+
+        self._pending_changed_paths = set()
 
         self.folder_watcher = QFileSystemWatcher(self)
         self.folder_watcher.directoryChanged.connect(self.schedule_watcher_refresh)
@@ -739,6 +742,86 @@ class MainWindow(QMainWindow):
         name = re.sub(r"[!?#$%'\"\u2018\u2019\u00B4`\u201C\u201D()\[\]]", '', name)
         return ' '.join(name.split()).strip()
 
+    def _scan_song_data(self, directory: str, directory_path: str) -> dict:
+        """Scan a single song folder and return its preview data dict."""
+        name_id = construct_name_id_from_directory_name(directory)
+
+        output_video_name_bk = name_id + '.bk2'
+        output_video_name_mp4 = name_id + '.mp4'
+        png_in_game_file_name = name_id + '_InGameLoading.png'
+        png_long_file_name = name_id + '_long.png'
+        png_result_file_name = name_id + '_Result.png'
+        output_image_name = name_id + '.png'
+        output_audio_name = name_id + '.ogg'
+        output_audio_preview_name = name_id + '_preview.ogg'
+        output_txt_name = name_id + '.vxla'
+        xml_file_name = name_id + '_meta.xml'
+
+        has_video = GuiElement.Icon.X.get_icon()
+        has_audio = GuiElement.Icon.X.get_icon()
+        has_cover = GuiElement.Icon.X.get_icon()
+        has_background = GuiElement.Icon.X.get_icon()
+        has_txt = GuiElement.Icon.X.get_icon()
+
+        all_files = os.listdir(directory_path)
+        txt_files = sorted(f for f in all_files if f.lower().endswith(SupportedFormats.TXT_EXTENSIONS))
+
+        txt_data = {}
+        if txt_files:
+            has_txt = GuiElement.Icon.CHECK.get_icon()
+            try:
+                txt_data = UltrastarToSingit.parse_file(os.path.join(directory_path, txt_files[-1]))
+            except Exception:
+                pass
+
+            video_file = txt_data.get('VIDEO', '')
+            if video_file and os.path.isfile(os.path.join(directory_path, video_file)):
+                has_video = GuiElement.Icon.CHECK.get_icon()
+
+            audio_file = txt_data.get('AUDIO', txt_data.get('MP3', ''))
+            if audio_file and os.path.isfile(os.path.join(directory_path, audio_file)):
+                has_audio = GuiElement.Icon.CHECK.get_icon()
+
+            cover_file = txt_data.get('COVER', '')
+            if cover_file and os.path.isfile(os.path.join(directory_path, cover_file)):
+                has_cover = GuiElement.Icon.CHECK.get_icon()
+
+            bg_file = txt_data.get('BACKGROUND', '')
+            if bg_file and os.path.isfile(os.path.join(directory_path, bg_file)):
+                has_background = GuiElement.Icon.CHECK.get_icon()
+
+        if not is_blank(self.dlc_json_name_input.text()):
+            cached_video = output_video_name_bk in all_files
+        else:
+            cached_video = output_video_name_mp4 in all_files
+        cached_audio = output_audio_name in all_files
+        cached_cover = output_image_name in all_files
+        cached_background = png_result_file_name in all_files
+        cached_txt = output_txt_name in all_files
+
+        if cached_video:
+            has_video = GuiElement.combine_icons(has_video, GuiElement.Icon.FILE_CHECK.get_icon())
+        if cached_audio:
+            has_audio = GuiElement.combine_icons(has_audio, GuiElement.Icon.FILE_CHECK.get_icon())
+        if cached_cover:
+            has_cover = GuiElement.combine_icons(has_cover, GuiElement.Icon.FILE_CHECK.get_icon())
+        if cached_background:
+            has_background = GuiElement.combine_icons(has_background, GuiElement.Icon.FILE_CHECK.get_icon())
+        if cached_txt:
+            has_txt = GuiElement.combine_icons(has_txt, GuiElement.Icon.FILE_CHECK.get_icon())
+
+        return {
+            "directory": directory,
+            "directory_path": directory_path,
+            "icons": [has_video, has_audio, has_cover, has_background, has_txt],
+            "outputs": [output_video_name_bk, output_video_name_mp4,
+                        output_audio_name, output_audio_preview_name,
+                        output_image_name, png_in_game_file_name, png_long_file_name,
+                        png_result_file_name, output_txt_name, xml_file_name],
+            "is_cached": cached_video or cached_audio or cached_cover or cached_txt,
+            "txt_data": txt_data,
+        }
+
     def scan_input_folder(self) -> None:
         """Scan input folder for song directories and populate preview table"""
         input_path = os.path.normpath(self.input_path.text().strip())
@@ -755,64 +838,7 @@ class MainWindow(QMainWindow):
                 if not os.path.isdir(directory_path) or " - " not in directory:
                     continue
 
-                name_id = construct_name_id_from_directory_name(directory)
-                if not is_blank(self.dlc_json_name_input.text()):
-                    output_video_name = name_id + '.bk2'
-                    png_in_game_file_name = "yoyoyo"
-                    png_long_file_name = "yoyoyo"
-                    png_result_file_name = "yoyoyo"
-                else :
-                    png_in_game_file_name = name_id + '_InGameLoading.png'
-                    png_long_file_name = name_id + '_long.png'
-                    png_result_file_name = name_id + '_Result.png'
-                    output_video_name = name_id + '.mp4'
-                output_image_name = name_id + '.png'
-                output_audio_name = name_id + '.ogg'
-                output_audio_preview_name = name_id + '_preview.ogg'
-                output_txt_name = name_id + '.vxla'
-
-                has_video = GuiElement.Icon.X.get_icon()
-                has_audio = GuiElement.Icon.X.get_icon()
-                has_image = GuiElement.Icon.X.get_icon()
-                has_txt = GuiElement.Icon.X.get_icon()
-
-                all_files = os.listdir(directory_path)
-                for file in all_files:
-                    file_lower = file.lower()
-                    if directory != Path(file).stem and directory != self.sanitize_name(Path(file).stem):
-                        continue
-                    if file_lower.endswith(SupportedFormats.VIDEO_EXTENSIONS):
-                        has_video = GuiElement.Icon.CHECK.get_icon()
-                    elif file_lower.endswith(SupportedFormats.AUDIO_EXTENSIONS):
-                        has_audio = GuiElement.Icon.CHECK.get_icon()
-                    elif file_lower.endswith(SupportedFormats.IMAGE_EXTENSIONS):
-                        has_image = GuiElement.Icon.CHECK.get_icon()
-                    elif file_lower.endswith(SupportedFormats.TXT_EXTENSIONS):
-                        has_txt = GuiElement.Icon.CHECK.get_icon()
-
-                cached_video = output_video_name in all_files
-                cached_audio = output_audio_name in all_files
-                cached_image = output_image_name in all_files
-                cached_txt = output_txt_name in all_files
-
-                if cached_video:
-                    has_video = GuiElement.combine_icons(has_video, GuiElement.Icon.FILE_CHECK.get_icon())
-                if cached_audio:
-                    has_audio = GuiElement.combine_icons(has_audio, GuiElement.Icon.FILE_CHECK.get_icon())
-                if cached_image:
-                    has_image = GuiElement.combine_icons(has_image, GuiElement.Icon.FILE_CHECK.get_icon())
-                if cached_txt:
-                    has_txt = GuiElement.combine_icons(has_txt, GuiElement.Icon.FILE_CHECK.get_icon())
-
-                songs.append({
-                    "directory": directory,
-                    "directory_path": directory_path,
-                    "icons": [has_video, has_audio, has_image, has_txt],
-                    "outputs": [output_video_name, output_audio_name, output_audio_preview_name,
-                                output_image_name, png_in_game_file_name, png_long_file_name,
-                                png_result_file_name, output_txt_name],
-                    "is_cached": cached_video or cached_audio or cached_image or cached_txt,
-                })
+                songs.append(self._scan_song_data(directory, directory_path))
 
         except Exception as e:
             self.log(f"Error scanning input folder: {e}")
@@ -842,7 +868,7 @@ class MainWindow(QMainWindow):
                 song_item.setFlags(song_item.flags() & ~Qt.ItemIsEditable)
                 self.preview_table.setItem(row, 1, song_item)
 
-                # Icon columns (2..5)
+                # Icon columns (2..6): Video, Audio, Cover, BG, Lyrics
                 for i, icon in enumerate(song["icons"], start=2):
                     icon_item = QTableWidgetItem()
                     icon_item.setIcon(icon)
@@ -912,14 +938,63 @@ class MainWindow(QMainWindow):
         if to_add:
             self.folder_watcher.addPaths(to_add)
 
-    def schedule_watcher_refresh(self) -> None:
+    def schedule_watcher_refresh(self, changed_path: str) -> None:
+        self._pending_changed_paths.add(os.path.normpath(changed_path))
         self.watcher_debounce.start()
 
     def do_watcher_refresh(self) -> None:
         if not self.isVisible():
+            self._pending_changed_paths.clear()
             return
-        self.sync_watched_folders(self.input_path.text())
-        self.scan_input_folder()
+
+        changed = self._pending_changed_paths.copy()
+        self._pending_changed_paths.clear()
+
+        input_path = os.path.normpath(self.input_path.text().strip())
+
+        # If root folder changed, a folder may have been added/removed → full rescan
+        if input_path in changed:
+            self.sync_watched_folders(input_path)
+            self.scan_input_folder()
+            return
+
+        # Otherwise only song subfolders changed → targeted row updates
+        self._update_changed_rows(changed)
+
+    def _update_changed_rows(self, changed_paths) -> None:
+        """Update only the rows whose song folders are in changed_paths."""
+        for row in range(self.preview_table.rowcount()):
+            checkbox_item = self.preview_table.item(row, 0)
+            if checkbox_item is None:
+                continue
+            payload = checkbox_item.data(Qt.UserRole) or {}
+            dir_path = payload.get("directory_path", "")
+            if not dir_path or os.path.normpath(dir_path) not in changed_paths:
+                continue
+            song_item = self.preview_table.item(row, 1)
+            if song_item is None:
+                continue
+            directory = song_item.text()
+            if os.path.isdir(dir_path):
+                song_data = self._scan_song_data(directory, dir_path)
+                self._update_row_icons(row, song_data)
+
+    def _update_row_icons(self, row: int, song_data: dict) -> None:
+        """Update icon columns and UserRole data for a single row, preserving checkbox state."""
+        self.preview_table.blockSignals(True)
+        try:
+            checkbox_item = self.preview_table.item(row, 0)
+            if checkbox_item:
+                checkbox_item.setData(Qt.UserRole, {
+                    "directory_path": song_data["directory_path"],
+                    "outputs": song_data["outputs"],
+                })
+            for i, icon in enumerate(song_data["icons"], start=2):
+                icon_item = self.preview_table.item(row, i)
+                if icon_item:
+                    icon_item.setIcon(icon)
+        finally:
+            self.preview_table.blockSignals(False)
 
     def log(self, message) -> None:
         ts = QDateTime.currentDateTime().toString("yyyy-MM-dd HH:mm:ss")
